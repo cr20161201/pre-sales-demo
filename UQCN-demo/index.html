@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>UQCN Demo</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div id="app"></div>
+    <script>
+      const params = new URLSearchParams(window.location.search);
+      const lang = params.get("lang") === "en" ? "en" : "zh-CN";
+      document.documentElement.lang = lang;
+      document.title = lang === "en" ? "UQCN Demo | English" : "UQCN Demo";
+
+      if (lang === "en") {
+        const englishStyles = document.createElement("link");
+        englishStyles.rel = "stylesheet";
+        englishStyles.href = "./styles.en.css";
+        document.head.appendChild(englishStyles);
+      }
+
+      const appScript = document.createElement("script");
+      appScript.src = lang === "en" ? "./app.en.js" : "./app.js";
+      document.body.appendChild(appScript);
+    </script>
+  </body>
+</html>

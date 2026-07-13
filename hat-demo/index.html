@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>yescaps.shop Demo</title>
+    <link rel="stylesheet" href="./shared.css" />
+  </head>
+  <body>
+    <main class="entry-page">
+      <button class="entry-lang-toggle" data-lang-switch>EN</button>
+      <section class="entry-copy">
+        <span class="eyebrow">B2B Custom Caps Platform</span>
+        <h1>yescaps.shop</h1>
+        <p>帽子定制、批发下单、在线支付 / 凭证支付和大货履约管理的一站式售前 Demo。</p>
+      </section>
+      <section class="entry-actions">
+        <a class="entry-card primary" href="./shop.html#/home">
+          <span>商城端</span>
+          <strong>进入选款、细节定制和批发下单链路</strong>
+        </a>
+        <a class="entry-card" href="./admin.html#/orders">
+          <span>管理后台</span>
+          <strong>查看订单、支付凭证、帽型和定制资源</strong>
+        </a>
+      </section>
+    </main>
+    <script>
+      const params = new URLSearchParams(window.location.search);
+      const isEnglish = params.get("lang") === "en";
+      document.documentElement.lang = isEnglish ? "en" : "zh-CN";
+      if (isEnglish) {
+        const englishStyles = document.createElement("link");
+        englishStyles.rel = "stylesheet";
+        englishStyles.href = "./shared.en.css";
+        document.head.appendChild(englishStyles);
+        document.title = "yescaps.shop Demo";
+        document.querySelector("[data-lang-switch]").textContent = "CN";
+        document.querySelector(".entry-copy p").textContent = "A pre-sales demo for custom cap selection, bulk ordering, online/voucher payment, and fulfillment management.";
+        const cards = document.querySelectorAll(".entry-card");
+        cards[0].href = "./shop.html?lang=en#/home";
+        cards[0].querySelector("span").textContent = "Storefront";
+        cards[0].querySelector("strong").textContent = "Enter style selection, detail customization, and bulk ordering";
+        cards[1].href = "./admin.html?lang=en#/orders";
+        cards[1].querySelector("span").textContent = "Admin";
+        cards[1].querySelector("strong").textContent = "Review orders, payment vouchers, cap styles, and customization resources";
+      }
+      document.querySelector("[data-lang-switch]").addEventListener("click", () => {
+        location.href = isEnglish ? "./index.html" : "./index.html?lang=en";
+      });
+    </script>
+  </body>
+</html>

@@ -1,0 +1,333 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AI Fashion Mall</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="shell">
+      <aside class="demo-nav" aria-label="Experience navigation">
+        <div>
+          <p class="eyebrow">AI Fashion Mall</p>
+          <h1>Showroom</h1>
+        </div>
+
+        <div class="mode-switch" role="tablist" aria-label="View switch">
+          <button class="active" data-view="app" type="button">APP</button>
+          <button data-view="admin" type="button">Admin</button>
+        </div>
+
+        <div class="story-panel">
+          <p class="panel-label">Sections</p>
+          <ol>
+            <li>AI styling</li>
+            <li>Wardrobe</li>
+            <li>Bag</li>
+            <li>Orders</li>
+            <li>Operations</li>
+          </ol>
+        </div>
+      </aside>
+
+      <main>
+        <section class="view app-view active" data-panel="app" aria-label="Mobile app">
+          <div class="phone-frame">
+            <div class="phone">
+              <section class="app-screen auth-screen" id="screen-auth">
+                <div class="auth-flow">
+                  <p class="eyebrow">AI Fashion Mall</p>
+                  <h2>Create your AI wardrobe</h2>
+                  <p class="muted">Create your fitting profile to start styling.</p>
+                  <label>
+                    Email
+                    <input value="alex@example.com" />
+                  </label>
+                  <button class="primary wide" data-onboarding-next="profile" type="button">Continue</button>
+                </div>
+              </section>
+
+              <section class="app-screen auth-screen" id="screen-onboarding-profile">
+                <div class="auth-flow">
+                  <p class="eyebrow">Basic info</p>
+                  <h2>Tell us your fit</h2>
+                  <div class="form-grid">
+                    <label>Name<input value="Alex Chen" /></label>
+                    <label>Age<input value="28" /></label>
+                    <label>Gender<input value="Female" /></label>
+                    <label>Height<input value="172 cm" /></label>
+                    <label>Weight<input value="56 kg" /></label>
+                    <label>Body type<input value="Optional" /></label>
+                  </div>
+                  <button class="primary wide" data-onboarding-next="photos" type="button">Next</button>
+                </div>
+              </section>
+
+              <section class="app-screen auth-screen" id="screen-onboarding-photos">
+                <div class="auth-flow">
+                  <p class="eyebrow">Photos</p>
+                  <h2>Create AI Twin</h2>
+                  <p class="muted">Add a selfie and full-body photo for fit analysis.</p>
+                  <div class="photo-upload-grid">
+                    <article>
+                      <img src="./picture/model/女模特.png" alt="Selfie" />
+                      <span>Selfie</span>
+                    </article>
+                    <article>
+                      <img src="./picture/model/女模特.png" alt="Full body" />
+                      <span>Full body</span>
+                    </article>
+                  </div>
+                  <button class="primary wide" data-onboarding-next="preferences" type="button">Upload and continue</button>
+                </div>
+              </section>
+
+              <section class="app-screen auth-screen" id="screen-onboarding-preferences">
+                <div class="auth-flow">
+                  <p class="eyebrow">Preferences</p>
+                  <h2>Set your style</h2>
+                  <div class="preference-groups">
+                    <div>
+                      <p class="card-title">Brands</p>
+                      <button class="active" type="button">Maison Yu</button>
+                      <button type="button">Studio Lin</button>
+                    </div>
+                    <div>
+                      <p class="card-title">Colors</p>
+                      <button class="active" type="button">Black</button>
+                      <button class="active" type="button">Neutral</button>
+                      <button type="button">Pink</button>
+                    </div>
+                    <div>
+                      <p class="card-title">Style</p>
+                      <button class="active" type="button">Minimal</button>
+                      <button type="button">Tailored</button>
+                      <button type="button">Soft</button>
+                    </div>
+                  </div>
+                  <button class="primary wide" data-onboarding-next="creating" type="button">Create AI Twin</button>
+                  <button class="text-button" data-onboarding-next="creating" type="button">Skip for now</button>
+                </div>
+              </section>
+
+              <section class="app-screen auth-screen" id="screen-onboarding-creating">
+                <div class="auth-flow center-flow">
+                  <div class="progress">
+                    <span></span>
+                    <p>Creating your likeness</p>
+                  </div>
+                  <p class="muted">We are building your AI Twin and preparing your first styling feed.</p>
+                  <button class="primary wide" id="finishOnboarding" type="button">Enter showroom</button>
+                </div>
+              </section>
+
+              <section class="app-screen home-screen active" id="screen-home">
+                <header class="home-top">
+                  <div class="app-tabs">
+                    <button class="active" data-app-tab="looks" type="button">Looks</button>
+                    <button data-app-tab="items" type="button">Items</button>
+                  </div>
+                  <button class="menu-icon" type="button" aria-label="Menu">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                  </button>
+                  <div class="app-menu hidden" id="appMenu"></div>
+                </header>
+                <div class="app-grid" id="appGrid"></div>
+              </section>
+
+              <section class="app-screen" id="screen-detail">
+                <button class="back-icon back-home" type="button" aria-label="Back">←</button>
+                <div id="detailContent"></div>
+              </section>
+
+              <section class="app-screen" id="screen-create">
+                <div class="try-setup">
+                  <button class="back-icon back-home" type="button" aria-label="Back">←</button>
+                  <p class="eyebrow">AI Twin</p>
+                  <h2>Choose fitting model</h2>
+                  <article class="try-model-card">
+                    <img src="./picture/model/女模特.png" alt="AI Twin" />
+                    <div>
+                      <p class="card-title">Alex's AI Twin</p>
+                      <button class="ghost-link" type="button">Change model</button>
+                    </div>
+                  </article>
+                  <button class="primary wide" id="startStyling" type="button">Start styling</button>
+                </div>
+              </section>
+
+              <section class="app-screen" id="screen-analysis">
+                <div class="create-flow">
+                  <p class="eyebrow">AI Analysis</p>
+                  <h2>Analyzing your AI Twin</h2>
+                  <div class="progress">
+                    <span></span>
+                    <p>Finding matching styles</p>
+                  </div>
+                  <p class="muted">Analyzing body profile, preferences, and styling options.</p>
+                </div>
+              </section>
+
+              <section class="app-screen" id="screen-recommend">
+                <button class="back-icon" data-open-screen="create" type="button" aria-label="Back">←</button>
+                <div id="recommendContent"></div>
+              </section>
+
+              <section class="app-screen" id="screen-try">
+                <button class="back-icon back-home" type="button" aria-label="Back">←</button>
+                <div id="trySetup"></div>
+              </section>
+
+              <section class="app-screen try-result-screen" id="screen-try-result">
+                <div id="tryResult"></div>
+              </section>
+
+              <section class="app-screen" id="screen-bag">
+                <button class="back-icon back-home" type="button" aria-label="Back">←</button>
+                <div class="screen-title-row">
+                  <h2>Bag</h2>
+                  <span id="bagTotalLabel">$0</span>
+                </div>
+                <div id="bagList" class="bag-list"></div>
+                <div class="checkout-summary">
+                  <div><span>Subtotal</span><strong id="subtotal">$0</strong></div>
+                  <button class="primary wide" id="checkoutButton" type="button">Checkout</button>
+                </div>
+              </section>
+
+              <section class="app-screen" id="screen-checkout">
+                <button class="back-icon" data-open-screen="bag" type="button" aria-label="Back">←</button>
+                <h2>Checkout</h2>
+                <div id="checkoutContent"></div>
+                <div class="checkout-summary order-summary">
+                  <div><span>Subtotal</span><strong id="checkoutSubtotal">$0</strong></div>
+                  <div><span>Shipping</span><strong>Free</strong></div>
+                  <div><span>Total</span><strong id="checkoutTotal">$0</strong></div>
+                </div>
+                <button class="primary wide" id="placeOrder" type="button">Place order</button>
+              </section>
+
+              <section class="app-screen" id="screen-success">
+                <div class="success-state">
+                  <p class="eyebrow">Order confirmed</p>
+                  <h2 id="successTitle">Thank you</h2>
+                  <p class="muted" id="successText">Order placed.</p>
+                  <button class="primary wide" data-open-screen="orders" type="button">View orders</button>
+                </div>
+              </section>
+
+              <section class="app-screen" id="screen-profile">
+                <div class="profile-head">
+                  <img src="./picture/model/女模特.png" alt="User profile" />
+                  <div>
+                    <p class="eyebrow">Profile</p>
+                    <h2>Alex Chen</h2>
+                    <p class="muted">alex@example.com</p>
+                  </div>
+                </div>
+                <div class="account-actions">
+                  <button data-open-screen="wardrobe" type="button">Wardrobe</button>
+                  <button data-open-screen="orders" type="button">Orders</button>
+                  <button type="button">Info</button>
+                </div>
+              </section>
+
+              <section class="app-screen" id="screen-orders">
+                <button class="back-icon" data-open-screen="profile" type="button" aria-label="Back">←</button>
+                <div class="screen-title-row">
+                  <h2>Orders</h2>
+                  <span id="orderCountLabel">0 orders</span>
+                </div>
+                <div class="orders" id="ordersList"></div>
+              </section>
+
+              <section class="app-screen" id="screen-wardrobe">
+                <button class="back-icon" data-open-screen="profile" type="button" aria-label="Back">←</button>
+	                <div class="screen-title-row">
+	                  <h2>Wardrobe</h2>
+	                  <button class="secondary" data-open-screen="bag" type="button">Bag</button>
+	                </div>
+                <div class="wardrobe-grid" id="wardrobeGrid"></div>
+              </section>
+
+              <nav class="app-bottom" aria-label="App bottom navigation">
+                <button class="active" data-open-screen="home" type="button">Home</button>
+                <button class="create-button" data-open-screen="create" type="button" aria-label="Create look">+</button>
+                <button data-open-screen="profile" type="button">Profile</button>
+              </nav>
+            </div>
+          </div>
+        </section>
+
+        <section class="view admin-view" data-panel="admin" aria-label="Admin">
+          <div class="admin-shell">
+            <aside class="admin-sidebar">
+              <div>
+                <p class="eyebrow">Workspace</p>
+                <h2>Fashion ops</h2>
+                <nav class="admin-menu" id="adminMenu" aria-label="Admin menu"></nav>
+              </div>
+
+              <div class="admin-account">
+                <p class="eyebrow">Account</p>
+                <strong>Alex Chen</strong>
+                <span id="adminAccountRole">Designer</span>
+                <div class="admin-role-switch">
+                  <button class="active" data-role="designer" type="button">Designer</button>
+                  <button data-role="merchant" type="button">Merchant</button>
+                </div>
+              </div>
+            </aside>
+
+            <section class="admin-main">
+              <header class="admin-header">
+                <div>
+                  <p class="eyebrow" id="adminRoleLabel">Designer</p>
+                  <h2 id="adminTitle">My styles</h2>
+                </div>
+                <button class="secondary" id="backToAdminList" type="button">Back to list</button>
+              </header>
+
+              <div class="admin-page active" id="adminListPage">
+                <section class="panel admin-list-panel">
+	                  <div class="panel-head">
+	                    <h3 id="leftPanelTitle">Style list</h3>
+	                    <div class="panel-head-actions">
+	                      <span id="pendingBadge">0 pending</span>
+	                      <button class="primary" id="submitStyleList" type="button">New style</button>
+	                    </div>
+	                  </div>
+	                  <div class="admin-status-tabs" id="adminStatusTabs"></div>
+	                  <div class="style-list" id="styleList"></div>
+	                </section>
+              </div>
+
+              <div class="admin-page" id="adminModulePage">
+                <section class="panel admin-list-panel">
+                  <div id="adminModuleContent"></div>
+                </section>
+              </div>
+
+              <div class="admin-page" id="adminDetailPage">
+                <div class="admin-detail-grid">
+                <section class="panel preview-panel">
+                  <div id="stylePreview"></div>
+                </section>
+
+                <section class="panel action-panel">
+                  <div id="adminActions"></div>
+                </section>
+                </div>
+              </div>
+            </section>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <script src="./app.js"></script>
+  </body>
+</html>

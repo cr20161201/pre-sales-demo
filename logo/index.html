@@ -1,0 +1,729 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>蜂巢 Logo 墙 Demo</title>
+    <style>
+      :root {
+        --hex-width: 92px;
+        --hex-height: var(--hex-width);
+        --gap: 16px;
+        --x-step: calc(var(--hex-width) + var(--gap));
+        --y-step: calc(var(--hex-height) + var(--gap));
+        --bg: #e4eef6;
+        --edge: rgba(119, 149, 166, 0.4);
+        --edge-light: rgba(255, 255, 255, 0.95);
+        --shadow: rgba(52, 79, 96, 0.16);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        touch-action: none;
+        -webkit-touch-callout: none;
+        -webkit-user-select: none;
+        user-select: none;
+        overscroll-behavior: none;
+      }
+
+      body {
+        overflow: hidden;
+        font-family: "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+        background: var(--bg);
+      }
+
+      .logo-wall {
+        position: relative;
+        display: grid;
+        width: 100vw;
+        height: 100vh;
+        min-height: 520px;
+        place-items: center;
+        overflow: hidden;
+        padding: 0;
+        isolation: isolate;
+      }
+
+      .floor-light {
+        display: none;
+      }
+
+      .honeycomb {
+        position: absolute;
+        z-index: 10;
+        left: 0;
+        top: 0;
+        width: 100vw;
+        height: 100vh;
+        overflow: hidden;
+      }
+
+      .honeycomb::before {
+        display: none;
+      }
+
+      .hexagon {
+        --logo-color: #406c8d;
+        position: absolute;
+        display: grid;
+        width: var(--hex-width);
+        height: var(--hex-height);
+        z-index: 20;
+        margin: 0;
+        place-items: center;
+        border-radius: 50%;
+
+        background: #ffffff;
+        box-shadow:
+          0 4px 10px rgba(0, 0, 0, 0.08),
+          inset 0 -12px 24px rgba(160, 190, 210, 0.25),
+          inset 0 -4px 8px rgba(160, 190, 210, 0.15);
+        border: none;
+
+        contain: layout style paint;
+
+        cursor: pointer;
+        touch-action: manipulation;
+        -webkit-tap-highlight-color: transparent;
+        transition:
+          transform 600ms cubic-bezier(0.34, 1.15, 0.64, 1),
+          opacity 400ms ease;
+      }
+
+      .hexagon:active {
+        transform: scale(0.92);
+        transition: transform 80ms ease;
+      }
+
+      .hexagon::before,
+      .hexagon::after {
+        display: none;
+      }
+
+      .hexagon.is-muted {
+        opacity: 1;
+      }
+
+      .hex-inner {
+        position: relative;
+        z-index: 2;
+        display: grid;
+        width: 100%;
+        height: 100%;
+        place-items: center;
+        border-radius: 50%;
+      }
+
+      .hex-inner img {
+        display: block;
+        width: 64%;
+        height: 64%;
+        object-fit: contain;
+      }
+
+      .word-logo {
+        display: none;
+        color: var(--logo-color);
+        max-width: 88%;
+        font-size: max(10px, 0.8vw);
+        font-weight: 750;
+        letter-spacing: -0.01em;
+        line-height: 1.1;
+        text-align: center;
+        text-transform: none;
+        text-shadow: 0 1px 0 rgba(255, 255, 255, 0.72);
+        overflow-wrap: anywhere;
+      }
+
+      .word-logo.strong {
+        font-size: max(10px, 0.85vw);
+        font-weight: 900;
+      }
+
+      .word-logo.light {
+        font-weight: 400;
+      }
+
+      .hexagon.is-text .word-logo {
+        display: block;
+      }
+
+      .hexagon.is-text img {
+        display: none;
+      }
+
+      .honeycomb-track {
+        position: absolute;
+        left: 0;
+        height: 100%;
+      }
+
+
+
+      .honeycomb.detail-open .hexagon {
+        will-change: transform, opacity;
+        transition:
+          transform 1200ms cubic-bezier(0.22, 0.9, 0.36, 1),
+          opacity 600ms ease;
+      }
+
+      .honeycomb.detail-open .hexagon.scatter {
+        opacity: 0.18;
+        box-shadow: none;
+      }
+
+      .hexagon.is-expanding {
+        z-index: 300 !important;
+        filter: none !important;
+        pointer-events: none;
+        transition:
+          transform 550ms cubic-bezier(0.34, 1.15, 0.64, 1),
+          width 550ms cubic-bezier(0.34, 1.15, 0.64, 1),
+          height 550ms cubic-bezier(0.34, 1.15, 0.64, 1),
+          left 550ms cubic-bezier(0.34, 1.15, 0.64, 1),
+          top 550ms cubic-bezier(0.34, 1.15, 0.64, 1),
+          border-radius 550ms ease,
+          opacity 400ms ease;
+      }
+
+      .hexagon.is-expanding::before {
+        opacity: 0;
+        transition: opacity 200ms ease;
+      }
+
+      /* 详情气泡卡片外部文字和标签内容 — 所有尺寸基于 --ps（面板直径） */
+      .detail-expand {
+        --ps: 620px;
+        --inner: calc(var(--ps) * 0.62);
+        position: fixed;
+        z-index: 310;
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%, -50%) scale(0.15);
+        opacity: 0;
+        pointer-events: none;
+        transition: transform 1200ms cubic-bezier(0.22, 0.9, 0.36, 1), opacity 400ms ease;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        width: var(--inner);
+        max-height: var(--inner);
+        overflow: hidden;
+      }
+
+      .detail-expand.visible {
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(1);
+        pointer-events: auto;
+        will-change: transform, opacity;
+      }
+
+      .detail-expand-logos {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: calc(var(--ps) * 0.03);
+        margin-bottom: calc(var(--ps) * 0.035);
+        flex-shrink: 0;
+      }
+
+      .detail-expand-logo-item {
+        width: calc(var(--ps) * 0.14);
+        height: calc(var(--ps) * 0.14);
+        background: #fff;
+        border-radius: 50%;
+        box-shadow:
+          0 6px 18px rgba(50, 90, 120, 0.12),
+          inset 0 2px 4px rgba(0, 0, 0, 0.03);
+        display: grid;
+        place-items: center;
+        padding: calc(var(--ps) * 0.022);
+        border: 1px solid rgba(121, 150, 166, 0.1);
+      }
+
+      .detail-expand-logo-item img {
+        max-width: 100%;
+        max-height: 100%;
+        object-fit: contain;
+      }
+
+      .detail-expand-logo-item.hidden {
+        display: none;
+      }
+
+      .client-logo-text {
+        display: none;
+        font-size: calc(var(--ps) * 0.022);
+        font-weight: 700;
+        color: #3a6580;
+        text-align: center;
+        line-height: 1.2;
+        overflow-wrap: anywhere;
+      }
+
+      .client-logo.is-text img {
+        display: none;
+      }
+
+      .client-logo.is-text .client-logo-text {
+        display: block;
+      }
+
+      .detail-expand-x {
+        font-size: calc(var(--ps) * 0.038);
+        font-weight: 300;
+        color: #6a96ab;
+        line-height: 1;
+      }
+
+      .detail-expand-desc {
+        font-size: calc(var(--ps) * 0.028);
+        font-weight: 500;
+        color: #3a6580;
+        line-height: 1.7;
+        text-align: center;
+        max-width: 95%;
+        margin: 0 0 calc(var(--ps) * 0.03) 0;
+        display: -webkit-box;
+        -webkit-line-clamp: 3;
+        line-clamp: 3;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+        flex-shrink: 0;
+      }
+
+      .detail-expand-label {
+        font-size: calc(var(--ps) * 0.024);
+        font-weight: 600;
+        color: #6a96ab;
+        letter-spacing: 0.15em;
+        text-transform: uppercase;
+        margin-bottom: calc(var(--ps) * 0.02);
+        flex-shrink: 0;
+      }
+
+      .detail-expand-tags {
+        display: flex;
+        flex-wrap: wrap;
+        gap: calc(var(--ps) * 0.014);
+        justify-content: center;
+        max-width: 100%;
+        overflow: hidden;
+      }
+
+      .detail-expand-tag {
+        padding: calc(var(--ps) * 0.013) calc(var(--ps) * 0.032);
+        font-size: calc(var(--ps) * 0.024);
+        font-weight: 600;
+        color: #2d6a88;
+        background: rgba(255, 255, 255, 0.95);
+        border: 1px solid rgba(80, 150, 200, 0.18);
+        border-radius: calc(var(--ps) * 0.026);
+        white-space: nowrap;
+        box-shadow: 0 2px 6px rgba(50, 90, 120, 0.05);
+      }
+
+      .detail-expand-close {
+        display: none;
+      }
+
+      .honeycomb-backdrop {
+        position: fixed;
+        z-index: 260;
+        pointer-events: auto;
+        opacity: 0;
+        transition: opacity 400ms ease;
+      }
+
+      .honeycomb-backdrop.visible {
+        opacity: 1;
+      }
+
+      /* 详情背板：升级为超圆角的高级磨砂玻璃卡片 */
+      .detail-hex-panel {
+        position: fixed;
+        z-index: 300;
+        left: 50%;
+        top: 50%;
+        width: 620px;
+        height: 620px;
+        transform: translate(-50%, -50%) scale(0.15);
+        opacity: 0;
+        pointer-events: none;
+        transition: transform 1200ms cubic-bezier(0.22, 0.9, 0.36, 1), opacity 400ms ease;
+        border-radius: 50%;
+        background: linear-gradient(160deg, rgb(200, 16, 46), rgb(180, 12, 38) 50%, rgb(200, 20, 50));
+        box-shadow: 0 30px 70px rgba(120, 10, 30, 0.22);
+        border: 1px solid rgba(255, 200, 200, 0.45);
+      }
+
+      .detail-hex-panel::before {
+        content: '';
+        position: absolute;
+        inset: 8px;
+        border-radius: inherit;
+        background: #e4eef6;
+      }
+
+      .detail-hex-panel.visible {
+        transform: translate(-50%, -50%) scale(1);
+        opacity: 1;
+        pointer-events: auto;
+        will-change: transform, opacity;
+      }
+
+    </style>
+  </head>
+  <body>
+    <main class="logo-wall" aria-label="合作企业圆形 Logo 展示">
+      <div class="floor-light" aria-hidden="true"></div>
+      <section class="honeycomb" aria-label="合作企业 Logo 墙"></section>
+
+      <div class="honeycomb-backdrop" id="honeycombBackdrop"></div>
+      <div class="detail-hex-panel" id="detailPanel"></div>
+
+      <div class="detail-expand" id="detailExpand">
+        <div class="detail-expand-logos">
+          <div class="detail-expand-logo-item">
+            <img src="./logo-wall/dishang.png" alt="迪尚集团" />
+          </div>
+          <span class="detail-expand-x">&times;</span>
+          <div class="detail-expand-logo-item client-logo">
+            <img src="" alt="" />
+            <span class="client-logo-text"></span>
+          </div>
+        </div>
+        <p class="detail-expand-desc"></p>
+        <span class="detail-expand-label">产品品类</span>
+        <div class="detail-expand-tags"></div>
+      </div>
+      <button class="detail-expand-close" id="detailClose">&times;</button>
+    </main>
+
+    <script src="logoAssets.js"></script>
+    <script>
+      (function () {
+        const honeycomb = document.querySelector('.honeycomb')
+        const foreignTradeAssets = foreignTradeLogoAssets.filter(a => a.logo)
+        const workwearAssets = workwearLogoAssets.filter(a => a.logo)
+        const allAssets = [...foreignTradeAssets, ...workwearAssets]
+
+        let track = null
+
+        function render() {
+          if (track) track.remove()
+
+          const vpW = window.innerWidth
+          const vpH = window.innerHeight
+          const padding = 32
+
+          const bubbleW = Math.round(Math.max(72, vpW * 0.048))
+          const gap = Math.round(Math.max(10, vpW * 0.008))
+          document.documentElement.style.setProperty('--hex-width', bubbleW + 'px')
+          document.documentElement.style.setProperty('--gap', gap + 'px')
+          const xStep = bubbleW + gap
+          const yStep = bubbleW + gap
+          const staggerX = xStep * 0.5
+
+          const availW = vpW - padding * 2
+          const availH = vpH - padding * 2
+
+          const rows = Math.floor((availH - bubbleW) / yStep) + 1
+          const maxCols = Math.floor((availW - bubbleW - staggerX) / xStep) + 1
+          const centerRow = Math.floor(rows / 2)
+
+          const neededForeignCols = Math.ceil(foreignTradeAssets.length / rows)
+          const neededWorkwearCols = Math.ceil(workwearAssets.length / rows)
+          const totalNeededCols = neededForeignCols + neededWorkwearCols
+          const totalCols = Math.min(totalNeededCols, maxCols)
+          let foreignCols = Math.max(1, Math.round(totalCols * neededForeignCols / totalNeededCols))
+          foreignCols = Math.min(foreignCols, totalCols - 1)
+          const workwearCols = totalCols - foreignCols
+
+          function getRowWidths(colCount, itemCount) {
+            const rowWidths = new Array(rows).fill(colCount)
+            let deficit = Math.max(0, colCount * rows - itemCount)
+            for (let edge = 0; deficit > 0 && edge <= Math.floor(rows / 2); edge++) {
+              const top = edge, bot = rows - 1 - edge
+              if (top === bot) {
+                const trim = Math.min(deficit, rowWidths[top])
+                rowWidths[top] -= trim
+                deficit -= trim
+              } else {
+                const trim = Math.min(Math.floor(deficit / 2), rowWidths[top])
+                rowWidths[top] -= trim
+                rowWidths[bot] -= trim
+                deficit -= trim * 2
+                if (deficit > 0) { rowWidths[bot]--; deficit-- }
+              }
+            }
+            return rowWidths
+          }
+
+          const foreignRowWidths = getRowWidths(foreignCols, foreignTradeAssets.length)
+          const workwearRowWidths = getRowWidths(workwearCols, workwearAssets.length)
+
+          const filledW = (totalCols - 1) * xStep + bubbleW + staggerX
+          const gridH = (rows - 1) * yStep + bubbleW
+          const leftOffset = (vpW - filledW) / 2
+          const topOffset = (vpH - gridH) / 2
+
+          track = document.createElement('div')
+          track.className = 'honeycomb-track'
+          track.style.animation = 'none'
+          track.style.top = `${topOffset}px`
+          track.style.left = `${leftOffset}px`
+
+          function addCell(x, y, item, idx) {
+            const offsetX = (y % 2 !== 0) ? staggerX : 0
+            const fig = document.createElement('figure')
+            fig.className = 'hexagon'
+            fig.style.cssText = `left:${x * xStep + offsetX}px;top:${y * yStep}px`
+
+            const inner = document.createElement('span')
+            inner.className = 'hex-inner'
+
+            if (item.logo) {
+              const img = document.createElement('img')
+              img.decoding = 'async'
+              img.loading = 'eager'
+              img.src = item.logo
+              img.alt = item.name
+              img.onerror = function () { fig.classList.add('is-text') }
+              inner.appendChild(img)
+            } else {
+              fig.classList.add('is-text')
+            }
+
+            const txt = document.createElement('span')
+            txt.className = 'word-logo'
+            txt.textContent = item.name
+            inner.appendChild(txt)
+
+            fig.appendChild(inner)
+            fig.dataset.itemIndex = idx
+            track.appendChild(fig)
+          }
+
+          const rowOrder = [centerRow]
+          for (let d = 1; rowOrder.length < rows; d++) {
+            if (centerRow - d >= 0 && rowOrder.length < rows) rowOrder.push(centerRow - d)
+            if (centerRow + d < rows && rowOrder.length < rows) rowOrder.push(centerRow + d)
+          }
+
+          function renderGroup(items, rowWidths, groupStartCol, groupCols, itemOffset) {
+            let ai = 0
+            for (const r of rowOrder) {
+              const w = rowWidths[r]
+              const colStart = groupStartCol + Math.floor((groupCols - w) / 2)
+              const midC = Math.floor(w / 2)
+              const colFill = [midC]
+              for (let d = 1; colFill.length < w; d++) {
+                if (midC - d >= 0 && colFill.length < w) colFill.push(midC - d)
+                if (midC + d < w && colFill.length < w) colFill.push(midC + d)
+              }
+              for (const ci of colFill) {
+                if (ai >= items.length) break
+                addCell(colStart + ci, r, items[ai], itemOffset + ai)
+                ai++
+              }
+            }
+          }
+
+          renderGroup(foreignTradeAssets, foreignRowWidths, 0, foreignCols, 0)
+          renderGroup(workwearAssets, workwearRowWidths, foreignCols, workwearCols, foreignTradeAssets.length)
+
+          honeycomb.appendChild(track)
+          cachedHexes = track.querySelectorAll('.hexagon')
+        }
+
+        let cachedHexes = null
+        render()
+
+        let detailOpen = false
+        let detailReady = false
+
+        let resizeTimer = 0
+        window.addEventListener('resize', () => {
+          clearTimeout(resizeTimer)
+          resizeTimer = setTimeout(() => {
+            if (!detailOpen) render()
+          }, 150)
+        })
+
+        const panel = document.getElementById('detailPanel')
+        const detailEl = document.getElementById('detailExpand')
+        const closeBtn = document.getElementById('detailClose')
+        const clientLogo = detailEl.querySelector('.client-logo')
+        const clientLogoImg = clientLogo.querySelector('img')
+        const clientLogoText = clientLogo.querySelector('.client-logo-text')
+        const detailDesc = detailEl.querySelector('.detail-expand-desc')
+        const detailTags = detailEl.querySelector('.detail-expand-tags')
+
+        function openDetail(fig, item) {
+          if (detailOpen) return
+          detailOpen = true
+
+          clientLogo.classList.remove('hidden', 'is-text')
+          if (item.logo) {
+            clientLogoImg.src = item.logo
+            clientLogoImg.alt = item.name
+          } else {
+            clientLogo.classList.add('is-text')
+            clientLogoText.textContent = item.name
+          }
+          detailDesc.textContent = item.description || ''
+          detailTags.textContent = ''
+          const tags = item.category ? item.category.split('、') : []
+          const frag = document.createDocumentFragment()
+          for (let i = 0; i < tags.length; i++) {
+            const span = document.createElement('span')
+            span.className = 'detail-expand-tag'
+            span.textContent = tags[i]
+            frag.appendChild(span)
+          }
+          detailTags.appendChild(frag)
+
+          const vpW = window.innerWidth
+          const vpH = window.innerHeight
+          const panelSize = Math.round(Math.max(420, Math.min(vpW * 0.42, vpH * 0.82)))
+          panel.style.width = panelSize + 'px'
+          panel.style.height = panelSize + 'px'
+          detailEl.style.setProperty('--ps', panelSize + 'px')
+
+          const panelRadius = panelSize / 2 + 20
+          const vpCX = window.innerWidth / 2
+          const vpCY = window.innerHeight / 2
+
+          const allHexes = cachedHexes
+          const rects = []
+          for (let i = 0; i < allHexes.length; i++) {
+            rects.push(allHexes[i].getBoundingClientRect())
+          }
+
+          const pushData = new Array(allHexes.length)
+          for (let i = 0; i < allHexes.length; i++) {
+            const r = rects[i]
+            const dx = r.left + r.width / 2 - vpCX
+            const dy = r.top + r.height / 2 - vpCY
+            const dist = Math.sqrt(dx * dx + dy * dy) || 1
+            const angle = Math.atan2(dy, dx)
+            const push = Math.max(50, panelRadius - dist + 80)
+            pushData[i] = `translate(${Math.round(Math.cos(angle) * push)}px,${Math.round(Math.sin(angle) * push)}px)`
+          }
+
+          honeycomb.classList.add('detail-open')
+          honeycomb.style.overflow = 'visible'
+
+          requestAnimationFrame(() => {
+            for (let i = 0; i < allHexes.length; i++) {
+              allHexes[i].style.transform = pushData[i]
+              allHexes[i].classList.add('scatter')
+            }
+            requestAnimationFrame(() => {
+              panel.classList.add('visible')
+              detailEl.classList.add('visible')
+              closeBtn.classList.add('visible')
+              detailReady = true
+            })
+          })
+        }
+
+        function closeDetail() {
+          if (!detailOpen) return
+          detailReady = false
+          detailEl.classList.remove('visible')
+          panel.classList.remove('visible')
+          closeBtn.classList.remove('visible')
+          panel.style.width = ''
+          panel.style.height = ''
+
+          const allHexes = cachedHexes
+          for (let i = 0; i < allHexes.length; i++) {
+            allHexes[i].style.transform = ''
+            allHexes[i].classList.remove('scatter')
+          }
+
+          setTimeout(() => {
+            detailOpen = false
+            honeycomb.classList.remove('detail-open')
+            honeycomb.style.overflow = ''
+          }, 1250)
+        }
+
+        let touchStartX = 0
+        let touchStartY = 0
+        let touchMoved = false
+        const TAP_THRESHOLD = 10
+
+        document.addEventListener('touchstart', e => {
+          const t = e.changedTouches[0]
+          touchStartX = t.clientX
+          touchStartY = t.clientY
+          touchMoved = false
+        }, { passive: true })
+
+        document.addEventListener('touchmove', e => {
+          if (touchMoved) return
+          const t = e.changedTouches[0]
+          const dx = t.clientX - touchStartX
+          const dy = t.clientY - touchStartY
+          if (dx * dx + dy * dy > TAP_THRESHOLD * TAP_THRESHOLD) {
+            touchMoved = true
+          }
+        }, { passive: true })
+
+        document.addEventListener('touchend', e => {
+          if (touchMoved) return
+          e.preventDefault()
+
+          const target = e.target
+
+          if (closeBtn.contains(target)) {
+            if (detailOpen) closeDetail()
+            return
+          }
+
+          if (detailOpen) {
+            if (!detailReady) return
+            if (!detailEl.contains(target)) closeDetail()
+            return
+          }
+
+          const fig = target.closest('.hexagon[data-item-index]')
+          if (!fig) return
+          const idx = +fig.dataset.itemIndex
+          const item = allAssets[idx]
+          if (item) openDetail(fig, item)
+        })
+
+        honeycomb.addEventListener('click', e => {
+          if (detailOpen) {
+            if (detailReady) closeDetail()
+            return
+          }
+          const fig = e.target.closest('.hexagon[data-item-index]')
+          if (!fig) return
+          const idx = +fig.dataset.itemIndex
+          const item = allAssets[idx]
+          if (item) openDetail(fig, item)
+        })
+
+        const logoWall = document.querySelector('.logo-wall')
+        logoWall.addEventListener('click', e => {
+          if (!detailOpen || !detailReady) return
+          if (detailEl.contains(e.target) || closeBtn.contains(e.target)) return
+          closeDetail()
+        })
+      })()
+    </script>
+  </body>
+</html>

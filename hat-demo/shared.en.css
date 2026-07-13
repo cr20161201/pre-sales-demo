@@ -1,0 +1,87 @@
+html[lang="en"] body {
+  font-family: Inter, "SF Pro Display", Arial, sans-serif;
+}
+
+html[lang="en"] .shop-header {
+  grid-template-columns: 190px minmax(0, 1fr) auto;
+  gap: 18px;
+}
+
+html[lang="en"] .shop-header nav {
+  gap: 6px;
+}
+
+html[lang="en"] .shop-header nav button {
+  padding: 0 10px;
+  white-space: normal;
+  line-height: 1.15;
+}
+
+html[lang="en"] .search-pill {
+  min-width: 132px;
+}
+
+html[lang="en"] .banner-copy h1 {
+  max-width: 680px;
+  font-size: 58px;
+  line-height: 1.04;
+}
+
+html[lang="en"] .banner-copy p,
+html[lang="en"] .entry-copy p,
+html[lang="en"] .flow-section p,
+html[lang="en"] .product-meta p {
+  line-height: 1.5;
+}
+
+html[lang="en"] .primary-btn,
+html[lang="en"] .secondary-btn,
+html[lang="en"] .ghost-btn,
+html[lang="en"] .text-btn,
+html[lang="en"] .chip-row button,
+html[lang="en"] .filter-group button,
+html[lang="en"] .account-tabs button,
+html[lang="en"] .ghost-link {
+  white-space: normal;
+  line-height: 1.2;
+}
+
+html[lang="en"] .product-title,
+html[lang="en"] .section-title h1,
+html[lang="en"] .section-title h2,
+html[lang="en"] .admin-head h1,
+html[lang="en"] .buy-panel h1 {
+  line-height: 1.15;
+}
+
+html[lang="en"] .sort-toolbar,
+html[lang="en"] .hero-actions,
+html[lang="en"] .stack-actions,
+html[lang="en"] .bottom-actions,
+html[lang="en"] .toolbar-filters,
+html[lang="en"] .toolbar-actions,
+html[lang="en"] .inline-actions {
+  flex-wrap: wrap;
+}
+
+html[lang="en"] .admin-side {
+  width: 230px;
+}
+
+html[lang="en"] .admin-side nav button,
+html[lang="en"] .ghost-link {
+  line-height: 1.2;
+}
+
+html[lang="en"] .admin-row span,
+html[lang="en"] .meta-item span,
+html[lang="en"] .summary-row span {
+  line-height: 1.25;
+}
+
+html[lang="en"] .config-head,
+html[lang="en"] .product-head,
+html[lang="en"] .review-head,
+html[lang="en"] .order-head {
+  column-gap: 10px;
+}

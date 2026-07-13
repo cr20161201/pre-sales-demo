@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Demo Index</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --bg: #f6f7f9;
+        --panel: #ffffff;
+        --text: #111827;
+        --muted: #6b7280;
+        --line: #e5e7eb;
+        --blue: #2563eb;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        background: var(--bg);
+        color: var(--text);
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", sans-serif;
+      }
+
+      main {
+        width: min(960px, calc(100% - 40px));
+        margin: 0 auto;
+        padding: 56px 0;
+      }
+
+      h1 {
+        margin: 0 0 10px;
+        font-size: 32px;
+        letter-spacing: 0;
+      }
+
+      p {
+        margin: 0;
+        color: var(--muted);
+        line-height: 1.7;
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 16px;
+        margin-top: 28px;
+      }
+
+      .card {
+        display: grid;
+        gap: 14px;
+        min-height: 190px;
+        padding: 22px;
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+      }
+
+      .actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-top: auto;
+      }
+
+      a {
+        display: inline-flex;
+        align-items: center;
+        min-height: 40px;
+        padding: 9px 13px;
+        color: var(--text);
+        text-decoration: none;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: #fff;
+      }
+
+      a.primary {
+        color: #fff;
+        background: var(--blue);
+        border-color: var(--blue);
+      }
+
+      @media (max-width: 720px) {
+        .grid {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>本地 Demo</h1>
+      <p>球服定制项目已经独立放到 <strong>jersey-demo</strong> 文件夹；AI 找款试衣体验保留在 <strong>sweater-demo</strong> 文件夹。</p>
+
+      <section class="grid">
+        <article class="card">
+          <div>
+            <h2>TeamKit Studio 球服定制</h2>
+            <p>球服列表、详情、伪 3D 定制、团定下单和管理端配置。</p>
+          </div>
+          <div class="actions">
+            <a class="primary" href="./jersey-demo/index.html#/home">中文版</a>
+            <a href="./jersey-demo/index-en.html#/home">English</a>
+          </div>
+        </article>
+
+        <article class="card">
+          <div>
+            <h2>AI 推荐找款试衣</h2>
+            <p>竖屏 4K 落地屏 demo，包含 AI 动态试穿和导购式推荐。</p>
+          </div>
+          <div class="actions">
+            <a href="./sweater-demo/sweater-screen.html">打开体验</a>
+          </div>
+        </article>
+
+        <article class="card">
+          <div>
+            <h2>帽子 Demo</h2>
+            <p>帽子 ToB 定制批发售前 Demo，包含商城端、定制器、采购单和管理后台。</p>
+          </div>
+          <div class="actions">
+            <a class="primary" href="./hat-demo/index.html">打开体验</a>
+          </div>
+        </article>
+
+        <article class="card">
+          <div>
+            <h2>UQCN Demo</h2>
+            <p>静态空壳，预留后续业务页面、演示链路和交互状态。</p>
+          </div>
+          <div class="actions">
+            <a href="./UQCN-demo/index.html">打开框架</a>
+          </div>
+        </article>
+
+        <article class="card">
+          <div>
+            <h2>AI Fashion Mall</h2>
+            <p>AI 试穿商场 demo，包含移动端浏览加购下单，以及设计师提交、运营审核上架和订单管理后台。</p>
+          </div>
+          <div class="actions">
+            <a class="primary" href="./ai-fashion-demo/index.html">打开体验</a>
+            <a href="./ai-fashion-demo/产品方案.md">产品方案</a>
+          </div>
+        </article>
+      </section>
+    </main>
+  </body>
+</html>

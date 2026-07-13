@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>yescaps.shop 商城端</title>
+    <link rel="stylesheet" href="./shared.css" />
+  </head>
+  <body>
+    <div id="shopApp"></div>
+    <script>
+      const params = new URLSearchParams(window.location.search);
+      const lang = params.get("lang") === "en" ? "en" : "zh-CN";
+      document.documentElement.lang = lang;
+      document.title = lang === "en" ? "yescaps.shop Storefront" : "yescaps.shop 商城端";
+
+      if (lang === "en") {
+        const englishStyles = document.createElement("link");
+        englishStyles.rel = "stylesheet";
+        englishStyles.href = "./shared.en.css";
+        document.head.appendChild(englishStyles);
+      }
+
+      const dataScript = document.createElement("script");
+      dataScript.src = lang === "en" ? "./data.en.js" : "./data.js";
+      document.body.appendChild(dataScript);
+
+      dataScript.addEventListener("load", () => {
+        const appScript = document.createElement("script");
+        appScript.src = lang === "en" ? "./shop.en.js" : "./shop.js";
+        document.body.appendChild(appScript);
+      });
+    </script>
+  </body>
+</html>
