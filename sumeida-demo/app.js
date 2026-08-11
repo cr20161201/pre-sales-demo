@@ -31,11 +31,33 @@ const initialState = () => ({
 const state = initialState();
 const getStyle = id => config.styles.find(item => item.id === id);
 const getFabric = id => config.fabrics.find(item => item.id === id);
-const getCombination = id => config.combinations.find(item => item.id === id);
+const baseSchemeId = styleId => `base-${styleId}`;
+const getCombination = id => {
+  const configured = config.combinations.find(item => item.id === id);
+  if (configured || !id?.startsWith("base-style-")) return configured;
+  const styleId = id.slice(5);
+  const style = getStyle(styleId);
+  if (!style) return null;
+  const mediaSource = config.combinations.find(item => item.styleId === styleId && Object.keys(item.tryonByBackground || {}).length)
+    || config.combinations.find(item => Object.keys(item.tryonByBackground || {}).length)
+    || config.combinations.find(item => item.styleId === styleId)
+    || config.combinations[0];
+  return {
+    id,
+    styleId,
+    fabricId: null,
+    image: style.image,
+    presentation: style.presentation,
+    tryonByBackground: mediaSource?.tryonByBackground || {},
+    video: mediaSource?.video,
+    realtime: mediaSource?.realtime,
+    isBase: true
+  };
+};
 const getBackground = id => config.backgrounds.find(item => item.id === id);
 const getPairingItem = id => config.pairingItems.find(item => item.id === id);
 const getExactCombo = () => config.combinations.find(item => item.styleId === state.styleId && item.fabricId === state.fabricId) || null;
-const getActiveCombo = () => getCombination(state.comboId) || getExactCombo() || config.combinations.find(item => item.styleId === state.styleId) || null;
+const getActiveCombo = () => getCombination(state.comboId) || getExactCombo() || null;
 const getSelectedTryOn = () => state.tryOnHistory.find(item => item.id === state.selectedTryOnId) || state.tryOnHistory[0] || null;
 const getOrderedFabrics = (styleId = state.styleId) => {
   if (!styleId) return config.fabrics;
@@ -201,7 +223,7 @@ function detailView() {
   const fabric = active ? getFabric(active.fabricId) : null;
   const media = active ? active.image : style.image;
   const mediaItem = active || style;
-  const variants = state.designHistory.map(getCombination).filter(item => item && item.styleId === style.id);
+  const variants = state.designHistory.map(getCombination).filter(item => item?.fabricId && item.styleId === style.id);
   const pendingFabric = getFabric(state.pendingFabricId);
   const detailRows = [
     { label: "样衣编号", value: style.sampleNo },
@@ -227,7 +249,9 @@ function detailView() {
 function productCard(item, action) {
   const active = state.styleId === item.id || state.fabricId === item.id;
   const reference = action === "select-style" ? item.sampleNo : item.artNo;
-  return `<button class="product-card ${active ? "active" : ""}" data-${action}="${item.id}"><img src="${item.thumbnail || item.image}" alt="${item.name}"><span class="body"><h3>${item.name}</h3><p>${reference}</p></span></button>`;
+  if (action !== "select-style") return `<button class="product-card ${active ? "active" : ""}" data-${action}="${item.id}"><img src="${item.thumbnail || item.image}" alt="${item.name}"><span class="body"><h3>${item.name}</h3><p>${reference}</p></span></button>`;
+  const added = state.designHistory.includes(baseSchemeId(item.id));
+  return `<article class="product-card-wrap"><button class="product-card ${active ? "active" : ""}" data-${action}="${item.id}"><img src="${item.thumbnail || item.image}" alt="${item.name}"><span class="body"><h3>${item.name}</h3><p>${reference}</p></span></button><button class="product-card-add" data-add-style="${item.id}" ${added ? "disabled" : ""}>${added ? "已加入方案" : "+ 加入方案"}</button></article>`;
 }
 
 function studioView() {
@@ -236,22 +260,19 @@ function studioView() {
   const combo = getCombination(state.comboId) || getExactCombo();
   const media = combo ? combo.image : style ? style.image : fabric ? fabric.image : "";
   const designs = state.designHistory.map(getCombination).filter(Boolean);
-  const previewStatus = combo ? "方案已生成" : style || fabric ? "等待补充素材" : "等待选择";
+  const previewStatus = combo ? "方案已加入" : style || fabric ? "等待加入方案" : "等待选择";
   const scanTarget = state.libraryTab === "styles" ? "style" : "fabric";
   const scanLabel = scanTarget === "style" ? "扫码选款" : "扫码选料";
   const libraryItems = state.libraryTab === "styles" ? config.styles : getOrderedFabrics();
-  return `${topbar("自主创款")}<section class="workspace studio-workspace"><div class="canvas studio-canvas"><div class="studio-preview-head"><div><p class="section-kicker">CREATION PREVIEW</p><h2>创作预览</h2></div><span class="studio-status ${combo ? "ready" : ""}">${previewStatus}</span></div><div class="canvas-view studio-preview ${state.generating ? "generating" : ""}">${media ? `<span class="demo-badge">${combo ? "预制组合效果" : "当前素材"}</span><img src="${media}" alt="当前创款">` : `<div class="empty-state"><b>开始你的创作</b>从右侧任选款式或面料，两项齐全后自动组合。</div>`}</div><div class="selection-float studio-selection"><div class="selected-row">${style ? `<img src="${style.image}" alt=""><span><small>已选款式</small><b>${style.name}</b></span><button class="text-btn" data-clear="style">移除</button>` : `<span class="selection-placeholder">款</span><span><small>已选款式</small><b>尚未选择</b></span><button class="text-btn" data-tab="styles">去选择</button>`}</div><div class="selected-row">${fabric ? `<img src="${fabric.image}" alt=""><span><small>已选面料</small><b>${fabric.name}</b></span><button class="text-btn" data-clear="fabric">移除</button>` : `<span class="selection-placeholder">料</span><span><small>已选面料</small><b>尚未选择</b></span><button class="text-btn" data-tab="fabrics">去选择</button>`}</div></div>${combo ? `<div class="studio-tryon-actions"><button class="secondary-btn" data-image-tryon>图片试穿</button><button class="primary-btn" data-realtime-tryon>实时试穿</button></div>` : ""}<section class="studio-history"><div class="studio-history-head"><div><span>本次方案</span><small>${designs.length} 个方案</small></div><button data-schemes>查看方案</button></div>${designs.length ? `<div class="studio-history-rail">${designs.map(item => `<button class="studio-history-card ${combo?.id === item.id ? "active" : ""}" data-studio-scheme="${item.id}"><img src="${item.image}" alt="${getStyle(item.styleId).name}"><span><strong>${getStyle(item.styleId).name}</strong><small>${getFabric(item.fabricId).name}</small></span></button>`).join("")}</div>` : `<div class="studio-history-empty">生成后的组合会自动保存在这里</div>`}</section></div><aside class="library"><div class="tabs"><button class="tab ${state.libraryTab === "styles" ? "active" : ""}" data-tab="styles">款式库</button><button class="tab ${state.libraryTab === "fabrics" ? "active" : ""}" data-tab="fabrics">面料库</button></div><div class="library-tools"><b>${state.libraryTab === "styles" ? "选择基础款式" : "选择面料"}</b><button class="scan-icon-btn" data-open-scan="${scanTarget}" aria-label="${scanLabel}" title="${scanLabel}"><span aria-hidden="true">▣</span></button></div><div class="library-grid">${libraryItems.map(item => productCard(item, state.libraryTab === "styles" ? "select-style" : "select-fabric")).join("")}</div></aside></section>`;
+  return `${topbar("自主创款")}<section class="workspace studio-workspace"><div class="canvas studio-canvas"><div class="studio-preview-head"><div><p class="section-kicker">CREATION PREVIEW</p><h2>创作预览</h2></div><span class="studio-status ${combo ? "ready" : ""}">${previewStatus}</span></div><div class="canvas-view studio-preview ${state.generating ? "generating" : ""}">${media ? `<span class="demo-badge">${combo ? (combo.isBase ? "原款方案" : "预制组合效果") : "当前素材"}</span><img src="${media}" alt="当前创款">` : `<div class="empty-state"><b>开始你的创作</b>从右侧选择款式，可直接加入方案或继续搭配面料。</div>`}</div><div class="selection-float studio-selection"><div class="selected-row">${style ? `<img src="${style.image}" alt=""><span><small>已选款式</small><b>${style.name}</b></span><button class="text-btn" data-clear="style">移除</button>` : `<span class="selection-placeholder">款</span><span><small>已选款式</small><b>尚未选择</b></span><button class="text-btn" data-tab="styles">去选择</button>`}</div><div class="selected-row">${fabric ? `<img src="${fabric.image}" alt=""><span><small>已选面料</small><b>${fabric.name}</b></span><button class="text-btn" data-clear="fabric">移除</button>` : `<span class="selection-placeholder">料</span><span><small>已选面料</small><b>尚未选择</b></span><button class="text-btn" data-tab="fabrics">去选择</button>`}</div></div>${combo ? `<div class="studio-tryon-actions"><button class="secondary-btn" data-image-tryon>图片试穿</button><button class="primary-btn" data-realtime-tryon>实时试穿</button></div>` : ""}<section class="studio-history"><div class="studio-history-head"><div><span>本次方案</span><small>${designs.length} 个方案</small></div><button data-schemes>查看方案</button></div>${designs.length ? `<div class="studio-history-rail">${designs.map(item => `<button class="studio-history-card ${combo?.id === item.id ? "active" : ""}" data-studio-scheme="${item.id}"><img src="${item.image}" alt="${getStyle(item.styleId).name}"><span><strong>${getStyle(item.styleId).name}</strong><small>${item.fabricId ? getFabric(item.fabricId).name : "原款"}</small></span></button>`).join("")}</div>` : `<div class="studio-history-empty">加入的原款与换料组合会保存在这里</div>`}</section></div><aside class="library"><div class="tabs"><button class="tab ${state.libraryTab === "styles" ? "active" : ""}" data-tab="styles">款式库</button><button class="tab ${state.libraryTab === "fabrics" ? "active" : ""}" data-tab="fabrics">面料库</button></div><div class="library-tools"><b>${state.libraryTab === "styles" ? "选择基础款式" : "选择面料"}</b><button class="scan-icon-btn" data-open-scan="${scanTarget}" aria-label="${scanLabel}" title="${scanLabel}"><span aria-hidden="true">▣</span></button></div><div class="library-grid">${libraryItems.map(item => productCard(item, state.libraryTab === "styles" ? "select-style" : "select-fabric")).join("")}</div></aside></section>`;
 }
 
 function backgroundSelectView() {
   const active = getActiveCombo();
-  const needsPhoto = state.backgroundMode !== "change" && !state.photo;
-  const guidance = needsPhoto
-    ? "选择演示场景，下一步拍摄正面全身照片。"
-    : "场景用于本次演示选择，结果展示预制试衣成片。";
+  const guidance = "场景用于本次演示选择，结果展示预制试衣成片。";
   const actionLabel = state.backgroundMode === "change"
     ? "确认演示场景"
-    : needsPhoto ? "下一步 · 拍照" : "生成试穿效果";
+    : "生成试穿效果";
   return `${topbar("选择试穿背景")}<section class="page background-page"><div class="background-heading"><p class="section-kicker">IMAGE TRY-ON · DEMO SCENE</p><h1>${state.backgroundMode === "change" ? "选择其他演示场景" : "选择一个试穿背景"}</h1><p>${active ? getStyle(active.styleId).name : "当前款式"} · ${guidance}</p></div><div class="background-grid">${config.backgrounds.map(item => `<button class="background-card ${state.backgroundId === item.id ? "active" : ""}" data-background="${item.id}"><img src="${item.image}" alt="${item.name}"><span><i></i><strong>${item.name}</strong><small>${item.description}</small></span></button>`).join("")}</div><div class="background-footer"><div><span>当前演示场景</span><strong>${getBackground(state.backgroundId)?.name || "请选择背景"}</strong></div><button class="primary-btn" data-confirm-background>${actionLabel}</button></div></section>`;
 }
 
@@ -275,7 +296,7 @@ function tryOnThumb(item) {
   const style = getStyle(combo.styleId);
   const thumb = item.type === "image" ? item.media : combo.image;
   const label = item.type === "image" ? "图片" : item.type === "video" ? "视频" : "实时";
-  return `<button class="result-thumb ${state.selectedTryOnId === item.id ? "active" : ""}" data-tryon-result="${item.id}"><span class="result-thumb-media"><img src="${thumb}" alt="${style.name}"><i>${label}</i></span><strong>${style.name}</strong><small>${getFabric(combo.fabricId).artNo}</small></button>`;
+  return `<button class="result-thumb ${state.selectedTryOnId === item.id ? "active" : ""}" data-tryon-result="${item.id}"><span class="result-thumb-media"><img src="${thumb}" alt="${style.name}"><i>${label}</i></span><strong>${style.name}</strong><small>${combo.fabricId ? getFabric(combo.fabricId).artNo : "原款"}</small></button>`;
 }
 
 function realtimeView() {
@@ -283,7 +304,7 @@ function realtimeView() {
   if (!combo) return `${topbar("实时试穿")}<section class="page center-page"><div class="consent panel"><h1>请先选择一套方案</h1><button class="primary-btn" data-go="studio">返回创款</button></div></section>`;
   const schemes = state.designHistory.map(getCombination).filter(Boolean);
   const returnLabel = state.flowSource === "studio" ? "返回创款" : "返回报告";
-  return `<section class="realtime-page">${topbar("实时试穿")}<video class="realtime-media" src="${combo.realtime}" autoplay muted loop playsinline></video><div class="realtime-shade"></div><aside class="realtime-panel"><div class="realtime-panel-head"><p class="section-kicker">CREATED THIS SESSION</p><h2>本次方案</h2><span>${schemes.length} 款</span></div><div class="realtime-schemes">${schemes.map(item => `<button class="realtime-scheme ${combo.id === item.id ? "active" : ""}" data-realtime-scheme="${item.id}"><img src="${item.image}" alt="${getStyle(item.styleId).name}"><span><strong>${getStyle(item.styleId).name}</strong><small>${getFabric(item.fabricId).name}</small></span></button>`).join("")}</div><div class="realtime-panel-actions"><button class="secondary-btn" data-return-flow>${returnLabel}</button><button class="primary-btn" data-home>返回首页</button></div></aside><span class="demo-badge realtime-badge">演示视频 · 正式版接入摄像头</span></section>`;
+  return `<section class="realtime-page">${topbar("实时试穿")}<video class="realtime-media" src="${combo.realtime}" autoplay muted loop playsinline></video><div class="realtime-shade"></div><aside class="realtime-panel"><div class="realtime-panel-head"><p class="section-kicker">CREATED THIS SESSION</p><h2>本次方案</h2><span>${schemes.length} 款</span></div><div class="realtime-schemes">${schemes.map(item => `<button class="realtime-scheme ${combo.id === item.id ? "active" : ""}" data-realtime-scheme="${item.id}"><img src="${item.image}" alt="${getStyle(item.styleId).name}"><span><strong>${getStyle(item.styleId).name}</strong><small>${item.fabricId ? getFabric(item.fabricId).name : "原款"}</small></span></button>`).join("")}</div><div class="realtime-panel-actions"><button class="secondary-btn" data-return-flow>${returnLabel}</button><button class="primary-btn" data-home>返回首页</button></div></aside><span class="demo-badge realtime-badge">演示视频 · 正式版接入摄像头</span></section>`;
 }
 
 function modal(content, className = "") {
@@ -325,7 +346,7 @@ function schemesModal() {
   const current = getSelectedTryOn();
   const currentBackground = current?.backgroundId || state.backgroundId;
   const isStudioFlow = state.flowSource === "studio";
-  modal(`<div class="modal-head"><div><p class="section-kicker">THIS SESSION</p><h2>${isStudioFlow ? "选择已完成方案" : "查看方案"}</h2><p>选择已有方案直接试穿，并沿用当前背景。</p></div><button class="close" data-close aria-label="关闭">×</button></div>${state.designHistory.length ? `<div class="creation-grid">${state.designHistory.map(id => { const combo = getCombination(id); return `<button class="scheme-card" data-try-scheme="${id}" data-background-id="${currentBackground}"><img src="${combo.image}" alt="${getStyle(combo.styleId).name}"><span><strong>${getStyle(combo.styleId).name}</strong><small>${getFabric(combo.fabricId).name}</small><b class="scheme-action">立即试穿</b></span></button>`; }).join("")}</div>` : `<div class="empty-state"><b>还没有方案记录</b>选择款式和面料后，生成结果会自动保存在这里。</div>`}<div class="modal-actions"><button class="secondary-btn" data-new-design>${isStudioFlow ? "继续设计" : "继续新设计"}</button></div>`);
+  modal(`<div class="modal-head"><div><p class="section-kicker">THIS SESSION</p><h2>${isStudioFlow ? "选择已完成方案" : "查看方案"}</h2><p>选择已有方案直接试穿，并沿用当前背景。</p></div><button class="close" data-close aria-label="关闭">×</button></div>${state.designHistory.length ? `<div class="creation-grid">${state.designHistory.map(id => { const combo = getCombination(id); return `<button class="scheme-card" data-try-scheme="${id}" data-background-id="${currentBackground}"><img src="${combo.image}" alt="${getStyle(combo.styleId).name}"><span><strong>${getStyle(combo.styleId).name}</strong><small>${combo.fabricId ? getFabric(combo.fabricId).name : "原款"}</small><b class="scheme-action">立即试穿</b></span></button>`; }).join("")}</div>` : `<div class="empty-state"><b>还没有方案记录</b>将原款或换料组合加入方案后，可从这里直接试穿。</div>`}<div class="modal-actions"><button class="secondary-btn" data-new-design>${isStudioFlow ? "继续设计" : "继续新设计"}</button></div>`);
 }
 
 function privacyModal() {
@@ -334,6 +355,16 @@ function privacyModal() {
 
 function ensureDesign(combo) {
   if (combo && !state.designHistory.includes(combo.id)) state.designHistory.unshift(combo.id);
+}
+
+function addBaseStyle(styleId) {
+  const scheme = getCombination(baseSchemeId(styleId));
+  if (!scheme) return;
+  state.styleId = styleId;
+  state.fabricId = null;
+  state.comboId = scheme.id;
+  ensureDesign(scheme);
+  toast("原款已加入本次方案");
 }
 
 function combine() {
@@ -439,11 +470,12 @@ function ensureRealtimeResult(combo) {
 }
 
 function startImageTryOn() {
-  const combo = getActiveCombo();
+  const combo = getActiveCombo() || (state.view === "detail" && state.styleId ? getCombination(baseSchemeId(state.styleId)) : null);
   if (!combo) {
     toast("请先完成一套方案");
     return;
   }
+  state.comboId = combo.id;
   ensureDesign(combo);
   state.tryonMode = "image";
   state.pairingStyleId = null;
@@ -456,11 +488,6 @@ function confirmBackgroundSelection() {
     toast("请先完成一套方案");
     return;
   }
-  if (state.backgroundMode !== "change" && !state.photo) {
-    state.captureTarget = "imageTryon";
-    go("camera");
-    return;
-  }
   createImageResult(combo.id, state.backgroundId);
   go("imageTryon", false);
 }
@@ -468,9 +495,7 @@ function confirmBackgroundSelection() {
 function completeCapture() {
   state.photo = true;
   if (state.captureTarget === "imageTryon") {
-    const combo = getActiveCombo();
-    if (combo) createImageResult(combo.id, state.backgroundId);
-    go("imageTryon", false);
+    openBackgroundSelect("new");
     return;
   }
   goToReport();
@@ -486,6 +511,11 @@ function continueTryOn() {
     if (!combo) return;
     ensureRealtimeResult(combo);
     go("realtime");
+    return;
+  }
+  if (!state.photo) {
+    state.captureTarget = "imageTryon";
+    go("camera");
     return;
   }
   openBackgroundSelect("new");
@@ -504,11 +534,13 @@ function chooseTryOnMode(mode) {
 }
 
 function startRealtimeTryOn() {
-  const combo = getActiveCombo();
+  const combo = getActiveCombo() || (state.view === "detail" && state.styleId ? getCombination(baseSchemeId(state.styleId)) : null);
   if (!combo) {
     toast("请先完成一套方案");
     return;
   }
+  state.comboId = combo.id;
+  ensureDesign(combo);
   state.tryonMode = "realtime";
   state.pairingStyleId = null;
   go("tryonMode");
@@ -601,6 +633,7 @@ function bind() {
   });
   document.querySelectorAll("[data-tab]").forEach(button => button.onclick = () => { state.libraryTab = button.dataset.tab; render(); });
   document.querySelectorAll("[data-select-style]").forEach(button => button.onclick = () => { state.styleId = button.dataset.selectStyle; state.comboId = null; combine(); });
+  document.querySelectorAll("[data-add-style]").forEach(button => button.onclick = () => addBaseStyle(button.dataset.addStyle));
   document.querySelectorAll("[data-select-fabric]").forEach(button => button.onclick = () => { state.fabricId = button.dataset.selectFabric; state.comboId = null; combine(); });
   document.querySelectorAll("[data-clear]").forEach(button => button.onclick = () => { if (button.dataset.clear === "style") state.styleId = null; else state.fabricId = null; state.comboId = null; render(); });
   document.querySelectorAll("[data-studio-scheme]").forEach(button => button.onclick = () => {

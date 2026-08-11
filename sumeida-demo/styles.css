@@ -138,6 +138,13 @@ html,body{width:100%;height:100%;overflow:hidden}
 .tryon-entry-grid,.studio-tryon-actions{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .studio-tryon-actions{margin-top:14px}
 .studio-tryon-actions button{min-width:0}
+.product-card-wrap{position:relative;min-width:0;padding-bottom:38px;background:white;border:1px solid var(--line);overflow:hidden}
+.product-card-wrap>.product-card{width:100%;height:100%;border:0;border-radius:0}
+.product-card-wrap>.product-card.active{border:3px solid var(--green)}
+.product-card-add{position:absolute;right:10px;bottom:8px;min-height:26px;padding:0 7px;border:0;background:transparent;color:var(--green);font-size:11px;font-weight:700;cursor:pointer}
+.product-card-add:hover{background:var(--mint)}
+.product-card-add:disabled{color:#9aa6a0;cursor:default}
+.product-card-add:disabled:hover{background:transparent}
 .existing-label{display:inline-block;margin-top:9px;padding:4px 7px;background:var(--mint);color:var(--green);font-size:11px;font-style:normal;font-weight:800}
 .fabric-modal-grid{grid-template-columns:repeat(3,1fr)}
 
