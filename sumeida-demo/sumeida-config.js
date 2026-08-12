@@ -87,6 +87,10 @@ window.SUMEIDA_CONFIG = {
     { id: "pairing-003", sampleNo: "MT-26003", name: "深灰配套长裤", image: `${SUMEIDA_ASSET_ROOT}/款3生成.png`, styleIds: ["style-003"] }
   ],
   modelImage: `${SUMEIDA_ASSET_ROOT}/模特图.png`,
+  homeImages: [
+    `${SUMEIDA_ASSET_ROOT}/模特图.png`,
+    `${SUMEIDA_ASSET_ROOT}/款3 服装上身.jpg`
+  ],
   backgrounds: [
     { id: "bg-sunlit-gallery", name: "日光展厅", description: "明亮克制的室内光影", image: "assets/backgrounds/background-sunlit-gallery.jpg" },
     { id: "bg-mountain", name: "山谷远景", description: "开阔清新的户外环境", image: "assets/backgrounds/background-mountain.jpg" },

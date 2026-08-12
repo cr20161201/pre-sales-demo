@@ -68,7 +68,7 @@ test("recommendation image try-on keeps recommendation actions", () => {
   assert.match(html, /data-schemes>其他方案/);
 });
 
-test("first studio image try-on selects a mode and background before taking a photo", () => {
+test("first studio image try-on takes a photo before selecting a background", () => {
   const context = createAppContext();
   setActiveCombination(context);
 
@@ -78,13 +78,12 @@ test("first studio image try-on selects a mode and background before taking a ph
   `, context);
   assert.deepEqual({ ...afterStart }, { view: "tryonMode", photo: false });
 
-  const afterBackground = vm.runInContext(`
+  const afterMode = vm.runInContext(`
     chooseTryOnMode("single");
-    confirmBackgroundSelection();
     ({ view: state.view, captureTarget: state.captureTarget, results: state.tryOnHistory.length });
   `, context);
   assert.deepEqual(
-    { ...afterBackground },
+    { ...afterMode },
     { view: "camera", captureTarget: "imageTryon", results: 0 }
   );
 
@@ -94,7 +93,16 @@ test("first studio image try-on selects a mode and background before taking a ph
   `, context);
   assert.deepEqual(
     { ...afterCapture },
-    { view: "imageTryon", photo: true, results: 1 }
+    { view: "backgroundSelect", photo: true, results: 0 }
+  );
+
+  const afterBackground = vm.runInContext(`
+    confirmBackgroundSelection();
+    ({ view: state.view, results: state.tryOnHistory.length });
+  `, context);
+  assert.deepEqual(
+    { ...afterBackground },
+    { view: "imageTryon", results: 1 }
   );
 });
 
