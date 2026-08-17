@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>VTON Benchmark · Xmax vs Decart</title>
+<style>
+  :root { color-scheme: light; --ink:#18201d; --muted:#68736e; --line:#dfe5e1; --accent:#176b52; --paper:#fff; --bg:#f4f6f4; }
+  * { box-sizing: border-box; }
+  body { font: 14px/1.65 -apple-system, BlinkMacSystemFont, "PingFang SC", sans-serif; background: var(--bg); color: var(--ink); max-width: 920px; margin: 0 auto; padding: 56px 28px; }
+  header { margin-bottom: 30px; }
+  h1 { font-size: 30px; margin: 0 0 6px; letter-spacing: 0; }
+  h2 { font-size: 16px; margin: 0 0 12px; }
+  .subtitle, .meta { color: var(--muted); margin: 0; }
+  .grid { display: grid; grid-template-columns: 1.2fr .8fr; gap: 16px; }
+  .card { background: var(--paper); border: 1px solid var(--line); border-radius: 8px; padding: 22px; margin-bottom: 16px; }
+  a.btn { display: inline-flex; color: #fff; background: var(--accent); text-decoration: none; padding: 9px 14px; border-radius: 6px; margin: 4px 6px 4px 0; }
+  a.secondary { color: var(--ink); background: #edf1ee; }
+  code { background: #eef2ef; padding: 2px 6px; border-radius: 4px; font-size: 13px; }
+  li { margin: 4px 0; }
+  @media (max-width: 700px) { body { padding: 28px 16px; } .grid { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>VTON Benchmark</h1>
+  <p class="subtitle">Xmax ClothX 与 Decart Lucy VTON 独立对比测试台</p>
+</header>
+<div class="grid">
+<section class="card">
+  <h2>标准对比</h2>
+  <p>运行 <code>npm run benchmark</code>。系统使用同一视频和服装素材，依次测试两家，避免同时推流造成资源竞争。</p>
+  <p class="meta">原始证据写入 <code>runs/&lt;run-id&gt;/</code>，阅读报告单独写入 <code>reports/&lt;run-id&gt;/comparison.md</code>。</p>
+</section>
+<section class="card">
+  <h2>单项预览</h2>
+  <p>
+    <a class="btn" href="/xmax-test.html?auto=1&duration=60000&runId=manual">运行 Xmax</a>
+    <a class="btn secondary" href="/decart-test.html?auto=1&duration=60000&runId=manual">运行 Decart</a>
+  </p>
+</section>
+</div>
+<section class="card">
+  <h2>运行条件</h2>
+  <ul>
+    <li><code>assets/test-clip.mp4</code> — 人物测试视频（业务素材）</li>
+    <li><code>assets/garment.jpg</code> — 白底服装参考图（可选第二套 <code>garment-b.jpg</code> 测换装切换）</li>
+    <li><code>.env</code> — 填好 <code>XMAX_API_KEY</code> 与 <code>DECART_API_KEY</code>（主 Key 只在本机 server 读取）</li>
+    <li>固定视频用于公平复测；真实摄像头测试应作为另一组记录，不与固定视频结果混算</li>
+  </ul>
+</section>
+</body>
+</html>

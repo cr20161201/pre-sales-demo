@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>Decart Lucy VTON 手动实测</title>
+<style>
+  body { font: 13px/1.6 -apple-system, "PingFang SC", sans-serif; background: #0f172a; color: #e2e8f0; margin: 0; padding: 16px; }
+  h1 { font-size: 16px; margin: 0 0 4px; }
+  .hint { color: #94a3b8; font-size: 12px; margin: 0 0 12px; }
+  #log { white-space: pre-wrap; margin: 0 0 12px; background: #1e293b; padding: 10px; border-radius: 8px; min-height: 140px; max-height: 280px; overflow: auto; }
+  #states { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+  .chip { padding: 2px 10px; border-radius: 12px; background: #334155; font-size: 12px; }
+  .chip.ok { background: #14532d; }
+  .chip.bad { background: #7f1d1d; }
+  video { max-width: 48%; border-radius: 8px; background: #000; margin-right: 8px; }
+  #start { font-size: 15px; padding: 8px 22px; border-radius: 8px; border: 0; background: #3b82f6; color: #fff; cursor: pointer; margin-bottom: 12px; }
+  #start:disabled { background: #64748b; cursor: default; }
+</style>
+</head>
+<body>
+<h1>Decart Lucy VTON 手动实测</h1>
+<p class="hint">① 先开全局代理（推荐 TUN 模式，需支持 WebRTC）② 打开本页 ③ 点「开始运行」④ 跑完自动保存 <b>results/decart-manual.json</b>。
+可加参数：<code>?relay=1</code>（走 TURN/TCP）、<code>?cam=1</code>（用真实摄像头）、<code>?duration=120000</code>（时长）。</p>
+<button id="start">开始运行</button>
+<div id="states"></div>
+<pre id="log">页面就绪，点「开始运行」启动实测。</pre>
+<div><video id="input" muted playsinline autoplay></video><video id="output" muted playsinline autoplay></video></div>
+<script type="module" src="/results/bundled/decart-manual.js"></script>
+</body>
+</html>

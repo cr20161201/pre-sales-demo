@@ -1,0 +1,27 @@
+{
+  "name": "vton-benchmark",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Xmax ClothX vs Decart Lucy VTON 双 provider 实测基准",
+  "scripts": {
+    "build": "node lib/build-bundles.mjs",
+    "server": "node lib/build-bundles.mjs && node server.mjs",
+    "benchmark": "node runner.mjs",
+    "benchmark:batch": "node runner.mjs --batch",
+    "run": "node runner.mjs",
+    "run:batch": "node runner.mjs --batch",
+    "transcode": "node lib/transcode.mjs"
+  },
+  "dependencies": {
+    "@decartai/sdk": "0.1.21",
+    "@xmaxai/sdk": "1.1.6",
+    "dotenv": "^17.2.1",
+    "express": "^5.1.0",
+    "xhr2": "^0.2.1"
+  },
+  "devDependencies": {
+    "esbuild": "^0.24.0",
+    "puppeteer-core": "^25.7.0"
+  }
+}
