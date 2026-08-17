@@ -68,7 +68,7 @@ test("recommendation image try-on keeps recommendation actions", () => {
   assert.match(html, /data-schemes>其他方案/);
 });
 
-test("first studio image try-on takes a photo before selecting a background", () => {
+test("first studio image try-on takes a photo and opens the result directly", () => {
   const context = createAppContext();
   setActiveCombination(context);
 
@@ -93,33 +93,18 @@ test("first studio image try-on takes a photo before selecting a background", ()
   `, context);
   assert.deepEqual(
     { ...afterCapture },
-    { view: "backgroundSelect", photo: true, results: 0 }
-  );
-
-  const afterBackground = vm.runInContext(`
-    confirmBackgroundSelection();
-    ({ view: state.view, results: state.tryOnHistory.length });
-  `, context);
-  assert.deepEqual(
-    { ...afterBackground },
-    { view: "imageTryon", results: 1 }
+    { view: "imageTryon", photo: true, results: 1 }
   );
 });
 
-test("automatic pairing continues to the original image try-on flow", () => {
+test("try-on mode offers only single and manual choices", () => {
   const context = createAppContext();
   setActiveCombination(context, { photo: true });
-
-  const result = vm.runInContext(`
-    startImageTryOn();
-    chooseTryOnMode("auto");
-    ({ view: state.view, tryonMode: state.tryonMode, pairingStyleId: state.pairingStyleId });
-  `, context);
-
-  assert.deepEqual(
-    { ...result },
-    { view: "backgroundSelect", tryonMode: "image", pairingStyleId: "pairing-001" }
-  );
+  const html = vm.runInContext(`startImageTryOn(); tryonModeView();`, context);
+  assert.match(html, /data-tryon-choice="single"/);
+  assert.match(html, /data-tryon-choice="manual"/);
+  assert.doesNotMatch(html, /data-tryon-choice="auto"|自动搭配/);
+  assert.match(html, /tryon-mode-grid two-options/);
 });
 
 test("manual pairing selects a compatible pairing item before continuing", () => {
@@ -137,8 +122,17 @@ test("manual pairing selects a compatible pairing item before continuing", () =>
 
   assert.deepEqual(
     { ...result },
-    { selectionView: "manualPairing", finalView: "backgroundSelect", pairingStyleId: "pairing-001" }
+    { selectionView: "manualPairing", finalView: "imageTryon", pairingStyleId: "pairing-001" }
   );
+});
+
+test("manual pairing page shows the full pairing style library without the current look panel", () => {
+  const context = createAppContext();
+  setActiveCombination(context);
+  const html = vm.runInContext(`manualPairingView();`, context);
+  assert.equal((html.match(/data-pairing-style=/g) || []).length, 2);
+  assert.match(html, /选择搭配款式/);
+  assert.doesNotMatch(html, /pairing-current|当前主款/);
 });
 
 test("realtime try-on also passes through mode selection", () => {
@@ -158,13 +152,13 @@ test("realtime try-on also passes through mode selection", () => {
   );
 });
 
-test("an existing session photo skips capture after background selection", () => {
+test("an existing session photo opens image try-on without a background step", () => {
   const context = createAppContext();
   setActiveCombination(context, { photo: true });
 
   const result = vm.runInContext(`
     startImageTryOn();
-    confirmBackgroundSelection();
+    chooseTryOnMode("single");
     ({ view: state.view, results: state.tryOnHistory.length });
   `, context);
 
@@ -202,15 +196,68 @@ test("realtime navigation stays inside the schemes panel", () => {
   assert.doesNotMatch(html, /class="realtime-actions"/);
 });
 
-test("both studio libraries expose a compact scan icon", () => {
+test("both studio libraries retain scanning and expose local upload", () => {
   const context = createAppContext();
   const styleHtml = vm.runInContext(`state.view = "studio"; state.libraryTab = "styles"; studioView();`, context);
   const fabricHtml = vm.runInContext(`state.libraryTab = "fabrics"; studioView();`, context);
 
-  assert.match(styleHtml, /class="scan-icon-btn" data-open-scan="style" aria-label="扫码选款"/);
-  assert.match(fabricHtml, /class="scan-icon-btn" data-open-scan="fabric" aria-label="扫码选料"/);
+  assert.match(styleHtml, /class="library-tool-btn scan-icon-btn" data-open-scan="style" aria-label="扫码选款"/);
+  assert.match(fabricHtml, /class="library-tool-btn scan-icon-btn" data-open-scan="fabric" aria-label="扫码选料"/);
+  assert.match(styleHtml, /data-open-upload="style"/);
+  assert.match(styleHtml, /data-upload-input="style"/);
+  assert.match(fabricHtml, /data-open-upload="fabric"/);
+  assert.match(fabricHtml, /data-upload-input="fabric"/);
   assert.doesNotMatch(styleHtml, />▣ 扫码选款</);
   assert.doesNotMatch(fabricHtml, />▣ 扫码选料</);
+});
+
+test("report expands to the recommendation list and has no scan entry", () => {
+  const context = createAppContext();
+  const html = vm.runInContext(`reportView();`, context);
+  assert.match(html, /data-go="recommendationList"/);
+  assert.doesNotMatch(html, /data-scan|扫码选款/);
+});
+
+test("image try-on result supports takeaway and no background adjustment", () => {
+  const context = createAppContext();
+  setActiveCombination(context, { photo: true });
+  const html = vm.runInContext(`generateImageTryOn(); imageTryonView();`, context);
+  assert.match(html, /data-takeaway/);
+  assert.doesNotMatch(html, /data-change-background|换背景/);
+});
+
+test("a base style never borrows try-on media from another style", () => {
+  const context = createAppContext();
+  const result = vm.runInContext(`
+    const combo = getCombination("base-style-002");
+    ({ styleId: combo.styleId, media: combo.tryonByBackground[state.backgroundId] || null });
+  `, context);
+  assert.equal(result.styleId, "style-002");
+  const expected = vm.runInContext(`config.combinations.find(item => item.styleId === "style-002")?.tryonByBackground[state.backgroundId] || null`, context);
+  assert.equal(result.media, expected);
+});
+
+test("uploaded fabric can generate a local combination and enter try-on", () => {
+  const context = createAppContext();
+  const result = vm.runInContext(`
+    state.styleId = "style-001";
+    state.uploadedFabrics.push({ id: "local-fabric-test", artNo: "LOCAL-F-001", name: "测试面料", image: "local-image.png", local: true });
+    state.fabricId = "local-fabric-test";
+    combine();
+    ({ comboId: state.comboId, generating: state.generating, designCount: state.designHistory.length });
+  `, context);
+  assert.match(result.comboId, /^local-combo-style-001-local-fabric-test$/);
+  assert.equal(result.designCount, 1);
+});
+
+test("uploaded style can be added as a base look", () => {
+  const context = createAppContext();
+  const result = vm.runInContext(`
+    state.uploadedStyles.push({ id: "local-style-test", sampleNo: "LOCAL-S-001", name: "测试款式", image: "local-style.png", local: true });
+    addBaseStyle("local-style-test");
+    ({ comboId: state.comboId, styleId: state.styleId, designCount: state.designHistory.length });
+  `, context);
+  assert.deepEqual({ ...result }, { comboId: "base-local-style-test", styleId: "local-style-test", designCount: 1 });
 });
 
 test("scanning a style preserves the selected fabric and creates its combination", () => {
