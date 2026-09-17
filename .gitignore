@@ -1,0 +1,9 @@
+.DS_Store
+.gstack/
+node_modules/
+dist/
+.env
+.env.*
+!.env.example
+*.zip
+certs/*.pem
