@@ -1,0 +1,32 @@
+{
+  "iwEcAqNwbmcDAQTRBAAF0QQABrBfzDLNo30A3QpQOH0DEl8AB9MAAAAAvaihgwgACaJpbQoAC9IADHc3.png": {
+    "id": "sumec-look-03",
+    "name": "白色长款衬衫",
+    "prompt": "Replace the person's current upper-body clothing with the white longline button-up shirt shown in the reference image. The shirt is the only upper-body layer, fully opaque, naturally fitted, and buttoned closed from chest to hem with standard shoulder-to-hip coverage. Preserve the person's face, hair, identity, body proportions, gender presentation, lower-body clothing, accessories, pose, motion, and background. Maintain modest everyday coverage with no exposed torso."
+  },
+  "iwEcAqNwbmcDAQTRBwAF0QlgBrB8jCgIQi29gApQOH0DEl8BB9MAAAAAvaihgwgACaJpbQoAC9IAfVnd.png": {
+    "id": "sumec-look-02",
+    "name": "棕色格纹双排扣西装",
+    "prompt": "Replace all current upper-body layers with the brown plaid double-breasted blazer shown in the reference image, worn over one plain neutral opaque crew-neck T-shirt. Use exactly these two upper-body layers; replace the original top rather than placing the blazer over it. Keep the T-shirt visible at the neckline and fully covering the torso beneath the blazer. Preserve the person's face, hair, identity, body proportions, gender presentation, lower-body clothing, accessories, pose, motion, and background. Maintain modest everyday coverage."
+  },
+  "iwEeAqNwbmcDAQTRCAAF0QgABrDzQV0Nfyw2xwpQOH0DEl8CB9MAAAAAvaihgwgACaJpbQoAC9IAUEfr.png": {
+    "id": "sumec-look-01",
+    "name": "灰褐色单排扣西装",
+    "prompt": "Replace all current upper-body layers with the taupe single-breasted blazer shown in the reference image, worn over one plain neutral opaque crew-neck T-shirt. Use exactly these two upper-body layers; replace the original top rather than placing the blazer over it. Keep the T-shirt visible at the neckline and fully covering the torso beneath the blazer. Preserve the person's face, hair, identity, body proportions, gender presentation, lower-body clothing, accessories, pose, motion, and background. Maintain modest everyday coverage."
+  },
+  "NT0gYxUQJCgunty72xT3RA.jpg": {
+    "id": "sumec-look-04",
+    "name": "深色休闲短裤",
+    "prompt": "Replace only the person's current lower-body clothing with the dark casual shorts shown in the reference image. Keep the person's existing upper-body clothing exactly unchanged and fully visible; do not redesign, remove, shorten, or restyle it. Preserve the person's face, hair, identity, body proportions, gender presentation, accessories, pose, motion, and background. Create a natural everyday fit with normal waist and leg coverage."
+  },
+  "sumec-light-straight-jeans.jpeg": {
+    "id": "sumec-look-05",
+    "name": "浅色直筒牛仔裤",
+    "prompt": "Replace only the person's current lower-body clothing with the light straight-leg jeans shown in the reference image. Keep the person's existing upper-body clothing exactly unchanged and fully visible; do not redesign, remove, shorten, or restyle it. Preserve the person's face, hair, identity, body proportions, gender presentation, accessories, pose, motion, and background. Create a natural everyday fit with a standard waist and full-length legs."
+  },
+  "sumec-ivory-tracksuit.webp": {
+    "id": "sumec-look-06",
+    "name": "米白色连帽运动套装",
+    "prompt": "Replace the person's current outfit with the ivory hooded tracksuit shown in the reference image: the zip-front hoodie, matching full-length track pants, and one plain neutral opaque crew-neck T-shirt beneath the hoodie. Replace the original clothing rather than layering the tracksuit over it. Keep the T-shirt fully covering the torso whether the hoodie is open or closed. Preserve the person's face, hair, identity, body proportions, gender presentation, accessories, pose, motion, and background. Maintain modest everyday coverage."
+  }
+}
