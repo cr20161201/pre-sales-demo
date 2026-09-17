@@ -1,0 +1,306 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="light dark" />
+    <title>知型 · 美学报告摘要化 Demo</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="topbar__inner">
+        <div class="brand" aria-label="知型个人美学报告">
+          <span class="brand__name">知型</span>
+          <span class="brand__page">个人美学报告</span>
+        </div>
+
+        <div class="topbar__controls">
+          <div class="segmented" aria-label="内容密度">
+            <button class="is-active" type="button" data-density="summary" aria-pressed="true">摘要</button>
+            <button type="button" data-density="full" aria-pressed="false">全部内容</button>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <main class="report">
+      <section class="chapter" aria-labelledby="traits-title">
+        <header class="chapter__header">
+          <div>
+            <h1 id="traits-title">基础特征</h1>
+            <p data-pretext contenteditable="true">X 型沙漏曲线 · 鹅蛋脸 · 春季型肤色</p>
+          </div>
+        </header>
+
+        <div class="trait-grid">
+          <article class="trait">
+            <figure class="trait__visual">
+              <img src="./assets/x_shape.png" alt="X 型沙漏曲线示意图" />
+            </figure>
+            <div class="trait__body">
+              <span class="eyebrow">体型结论</span>
+              <h2>X 型沙漏曲线</h2>
+              <p class="lead" data-pretext contenteditable="true">肩胯匀称、腰线明确，穿搭重点是突出比例，而不是继续堆叠曲线。</p>
+              <ul class="key-points">
+                <li><strong>优势</strong><span>肩胯线条匀称，腰肢自带曲线感</span></li>
+                <li><strong>重点</strong><span>用收腰款或细腰带突出腰线</span></li>
+              </ul>
+              <details>
+                <summary>分析依据</summary>
+                <div class="detail-copy">
+                  <p><strong>原始结论：</strong>X 型沙漏曲线款 | 自带黄金比例的“天生衣架子”。</p>
+                  <p><strong>优化重点：</strong>避免过度强调曲线，打造轻盈不臃肿的灵动线条。</p>
+                  <p><strong>版型选择：</strong>上半身简约利落，下半身可搭配微 A 摆裙，平衡整体比例。</p>
+                  <p><strong>面料建议：</strong>优选垂坠感面料，如雪纺、醋酸，避开硬挺材质。</p>
+                </div>
+              </details>
+            </div>
+          </article>
+
+          <article class="trait">
+            <figure class="trait__visual">
+              <img src="./assets/oval_face.png" alt="鹅蛋脸示意图" />
+            </figure>
+            <div class="trait__body">
+              <span class="eyebrow">脸型结论</span>
+              <h2>鹅蛋脸均衡款</h2>
+              <p class="lead" data-pretext contenteditable="true">线条柔和、比例均衡，脸型适配度高，领型和发型的选择空间更大。</p>
+              <ul class="key-points">
+                <li><strong>特点</strong><span>轮廓舒展，无明显视觉短板</span></li>
+                <li><strong>适配</strong><span>V 领、圆领、方领和高领均可</span></li>
+              </ul>
+              <details>
+                <summary>分析依据</summary>
+                <div class="detail-copy">
+                  <p><strong>原始结论：</strong>鹅蛋脸均衡款 | 自带“万能适配” buff 的气质款脸型。</p>
+                  <p><strong>比例：</strong>公认的“百搭脸型”，适配几乎所有风格。</p>
+                  <p><strong>视觉痛点：</strong>无明显短板，适配性超强，不挑造型。</p>
+                  <p><strong>适配发型：</strong>短发、长发、卷发、直发都适配，可塑性拉满。</p>
+                </div>
+              </details>
+            </div>
+          </article>
+        </div>
+
+        <article class="skin-summary">
+          <div class="skin-summary__intro">
+            <span class="eyebrow">肤色结论</span>
+            <h2>春季型肤色</h2>
+            <p data-pretext contenteditable="true">自带春日滤镜的元气明媚款肤色，适合中高明度、中高纯度的暖色调。</p>
+          </div>
+          <dl class="metrics">
+            <div><dt>明度</dt><dd>中高</dd></div>
+            <div><dt>纯度</dt><dd>中高</dd></div>
+            <div><dt>冷暖</dt><dd>暖调</dd></div>
+          </dl>
+          <div class="palette" aria-label="春季型推荐色板">
+            <span style="--swatch: #deded8"></span>
+            <span style="--swatch: #aab6aa"></span>
+            <span style="--swatch: #cdb988"></span>
+            <span style="--swatch: #f2e8dc"></span>
+            <span style="--swatch: #d8b7a3"></span>
+            <span style="--swatch: #bfd7d4"></span>
+          </div>
+          <details class="skin-summary__details">
+            <summary>肤色分析依据</summary>
+            <div class="detail-copy detail-copy--columns">
+              <p><strong>毛发：</strong>暖调棕色系，自带温柔的春日氛围感。</p>
+              <p><strong>眼睛：</strong>眼珠呈暖棕调，眼白带轻微湖蓝色，眼神明亮清澈。</p>
+              <p><strong>皮肤：</strong>肤色偏白皙，脸颊自带珊瑚粉色红晕，整体轻盈鲜活。</p>
+              <p><strong>色彩原则：</strong>中高明度与中高纯度的暖色，更能凸显明亮元气感。</p>
+            </div>
+          </details>
+        </article>
+      </section>
+
+      <section class="chapter" aria-labelledby="style-title">
+        <header class="chapter__header">
+          <div>
+            <h1 id="style-title">风格定位</h1>
+            <p data-pretext contenteditable="true">温柔知性，但不甜腻；精致有分寸，也适合日常。</p>
+          </div>
+        </header>
+
+        <div class="style-layout">
+          <div class="style-identity">
+            <span class="eyebrow">你的核心风格</span>
+            <h2>优雅风格</h2>
+            <p class="style-identity__summary" data-pretext contenteditable="true">温柔、精致、知性、含蓄，自带温柔气场，优雅又有分寸感。</p>
+            <div class="tags" aria-label="风格关键词">
+              <span>温柔</span><span>精致</span><span>知性</span><span>含蓄</span>
+            </div>
+          </div>
+
+          <div class="style-actions">
+            <h3>先记住这三点</h3>
+            <ol>
+              <li><p><strong>低饱和柔色</strong>浅粉、裸粉、灰紫、米白做主色。</p></li>
+              <li><p><strong>柔和收腰线条</strong>茶歇裙、斜肩上衣、直筒半身裙。</p></li>
+              <li><p><strong>细腻垂坠面料</strong>真丝、醋酸和柔软针织优先。</p></li>
+            </ol>
+          </div>
+
+          <div class="recommended-colors">
+            <h3>推荐色彩</h3>
+            <div class="color-grid">
+              <span style="--color: #ffb6c1"><i></i><b>浅粉</b></span>
+              <span style="--color: #e6c0b4"><i></i><b>裸粉</b></span>
+              <span style="--color: #8b7e92"><i></i><b>灰紫</b></span>
+              <span style="--color: #f5f5dc"><i></i><b>米白</b></span>
+            </div>
+          </div>
+        </div>
+
+        <details class="chapter-details">
+          <summary>查看完整风格分析</summary>
+          <div class="detail-copy detail-copy--columns">
+            <p><strong>色彩：</strong>以低饱和柔色为主，用浅粉、裸粉、灰紫、米白打底，搭配少量浅粉与薄荷绿点缀。</p>
+            <p><strong>版型：</strong>收腰茶歇裙、斜肩上衣、直筒半身裙，线条柔和又利落。</p>
+            <p><strong>面料：</strong>真丝、醋酸、柔软针织，垂坠感细腻丝滑，自带柔光高级感。</p>
+            <p><strong>配饰：</strong>珍珠耳钉、细链条项链、细跟鞋、缎面手提包，精致不张扬。</p>
+            <p><strong>场景：</strong>职场通勤、约会、轻社交，适配需要温柔知性感的场合。</p>
+          </div>
+        </details>
+      </section>
+
+      <section class="chapter recommendation-preview" id="recommendations" aria-labelledby="looks-title">
+        <header class="chapter__header">
+          <div>
+            <h1 id="looks-title">推荐款式</h1>
+            <p data-pretext contenteditable="true">从你的风格、体型与肤色出发，先看最适合的套装与单品。</p>
+          </div>
+        </header>
+
+        <section class="recommendation-group" aria-labelledby="outfit-preview-title">
+          <div class="recommendation-group__heading">
+            <div>
+              <span class="eyebrow">整体搭配</span>
+              <h2 id="outfit-preview-title">精选套装</h2>
+            </div>
+            <span class="recommendation-count">4 套</span>
+          </div>
+
+          <div class="outfit-preview-grid">
+            <article class="outfit-card">
+              <figure class="outfit-card__media">
+                <img src="./assets/look-burgundy.jpg" alt="酒红斜肩上衣与米白阔腿裤完整搭配" />
+              </figure>
+              <div class="outfit-card__body">
+                <div>
+                  <span class="eyebrow">轻社交 · 显腰线</span>
+                  <h3>酒红轻熟通勤</h3>
+                  <p>暖调酒红提亮肤色，米白阔腿裤让曲线更轻盈。</p>
+                </div>
+                <button class="button button--primary" type="button" data-try-on="酒红轻熟通勤">整套试穿</button>
+              </div>
+            </article>
+
+            <article class="outfit-card outfit-card--composed">
+              <figure class="outfit-composition" aria-label="米杏上衣、浅黄马甲与米色长裤组成的套装">
+                <img src="./assets/item-wrap-blouse.jpg" alt="米杏裹身上衣" />
+                <img src="./assets/item-belted-vest.jpg" alt="浅黄系带马甲" />
+                <img src="./assets/item-flared-trousers.jpg" alt="米色垂坠长裤" />
+              </figure>
+              <div class="outfit-card__body">
+                <div>
+                  <span class="eyebrow">日常通勤 · 柔和层次</span>
+                  <h3>柔雾轻盈套装</h3>
+                  <p>米杏、浅黄与垂坠长裤叠出轻柔层次，通勤不显拘谨。</p>
+                </div>
+                <button class="button button--primary" type="button" data-try-on="柔雾轻盈套装">整套试穿</button>
+              </div>
+            </article>
+          </div>
+        </section>
+
+        <section class="recommendation-group" aria-labelledby="item-preview-title">
+          <div class="recommendation-group__heading">
+            <div>
+              <span class="eyebrow">灵活组合</span>
+              <h2 id="item-preview-title">推荐单品</h2>
+            </div>
+            <span class="recommendation-count">8 件</span>
+          </div>
+
+          <div class="item-preview-grid">
+            <article class="item-card">
+              <figure><img src="./assets/item-wrap-blouse.jpg" alt="米杏裹身上衣" /></figure>
+              <div class="item-card__body">
+                <span>上装</span>
+                <h3>米杏裹身上衣</h3>
+                <p>收腰 · 暖柔色</p>
+                <button class="icon-button" type="button" data-try-on="米杏裹身上衣" aria-label="试穿米杏裹身上衣" title="试穿该款">试穿</button>
+              </div>
+            </article>
+            <article class="item-card">
+              <figure><img src="./assets/item-belted-vest.jpg" alt="浅黄系带马甲" /></figure>
+              <div class="item-card__body">
+                <span>上装</span>
+                <h3>浅黄系带马甲</h3>
+                <p>层次 · 强调腰线</p>
+                <button class="icon-button" type="button" data-try-on="浅黄系带马甲" aria-label="试穿浅黄系带马甲" title="试穿该款">试穿</button>
+              </div>
+            </article>
+            <article class="item-card">
+              <figure><img src="./assets/item-flared-trousers.jpg" alt="米色垂坠长裤" /></figure>
+              <div class="item-card__body">
+                <span>下装</span>
+                <h3>米色垂坠长裤</h3>
+                <p>高腰 · 修饰比例</p>
+                <button class="icon-button" type="button" data-try-on="米色垂坠长裤" aria-label="试穿米色垂坠长裤" title="试穿该款">试穿</button>
+              </div>
+            </article>
+          </div>
+        </section>
+
+        <a class="view-all" href="./recommendations.html">
+          <span><strong>查看全部推荐</strong><small>4 套搭配 · 8 件单品</small></span>
+          <span aria-hidden="true">→</span>
+        </a>
+      </section>
+
+      <section class="chapter" aria-labelledby="advice-title">
+        <header class="chapter__header">
+          <div>
+            <h1 id="advice-title">穿搭建议</h1>
+            <p data-pretext contenteditable="true">把腰线、领口和色彩控制好，就能稳定放大你的优势。</p>
+          </div>
+        </header>
+
+        <div class="advice-grid">
+          <article class="advice-group">
+            <span class="eyebrow">优先这样穿</span>
+            <ol>
+              <li><div><h2>强化腰线</h2><p>选择收腰剪裁或短上衣叠穿，保留 X 型比例优势。</p></div></li>
+              <li><div><h2>保持轻盈</h2><p>优先垂坠面料和微 A 摆，避免造型过度堆叠。</p></div></li>
+              <li><div><h2>使用暖柔色</h2><p>用中高明度暖色提亮肤色，维持春日清透感。</p></div></li>
+            </ol>
+          </article>
+          <article class="advice-group advice-group--avoid">
+            <span class="eyebrow">尽量避开</span>
+            <ol>
+              <li><div><h2>完全无腰线</h2><p>宽松直筒会遮住比例优势，让整体显得松散。</p></div></li>
+              <li><div><h2>硬挺厚重面料</h2><p>容易放大体积感，削弱轻盈流畅的曲线。</p></div></li>
+              <li><div><h2>大面积深冷色</h2><p>会削弱春季型肤色的明亮、鲜活和温柔感。</p></div></li>
+            </ol>
+          </article>
+        </div>
+
+        <details class="chapter-details">
+          <summary>查看完整搭配依据</summary>
+          <div class="detail-copy detail-copy--columns">
+            <p><strong>穿搭核心：</strong>突出腰线，用收腰款或细腰带放大身材优势。</p>
+            <p><strong>版型选择：</strong>上半身简约利落，下半身可搭配微 A 摆裙，平衡整体比例。</p>
+            <p><strong>面料建议：</strong>优选垂坠感面料，如雪纺、醋酸，避开硬挺材质。</p>
+            <p><strong>领型适配：</strong>鹅蛋脸对 V 领、圆领、方领与高领都有较高适配度。</p>
+          </div>
+        </details>
+      </section>
+    </main>
+
+    <div class="toast" role="status" aria-live="polite" hidden>Demo 已记录该款式，正式版本将进入实时试衣。</div>
+
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>

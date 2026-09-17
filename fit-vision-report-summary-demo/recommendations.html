@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="light dark" />
+    <title>知型 · 款式推荐</title>
+    <link rel="stylesheet" href="./styles.css" />
+    <link rel="stylesheet" href="./recommendations.css" />
+  </head>
+  <body class="catalog-page">
+    <header class="topbar">
+      <div class="topbar__inner">
+        <div class="brand" aria-label="知型款式推荐">
+          <span class="brand__name">知型</span>
+          <span class="brand__page">款式推荐</span>
+        </div>
+        <a class="back-link" href="./index.html#recommendations"><span aria-hidden="true">←</span> 返回美学报告</a>
+      </div>
+    </header>
+
+    <main class="catalog">
+      <header class="catalog-hero">
+        <div>
+          <span class="eyebrow">为你精选</span>
+          <h1>款式推荐</h1>
+          <p>基于你的优雅风格、X 型曲线与春季型肤色。</p>
+        </div>
+        <dl class="catalog-stats" aria-label="推荐数量">
+          <div><dt>成套搭配</dt><dd>4</dd></div>
+          <div><dt>推荐单品</dt><dd>8</dd></div>
+        </dl>
+      </header>
+
+      <div class="catalog-tabs" role="tablist" aria-label="推荐类型">
+        <button class="is-active" id="outfits-tab" type="button" role="tab" aria-selected="true" aria-controls="outfits-panel" data-tab="outfits">成套搭配 <span>4</span></button>
+        <button id="items-tab" type="button" role="tab" aria-selected="false" aria-controls="items-panel" data-tab="items">推荐单品 <span>8</span></button>
+      </div>
+
+      <section class="catalog-panel" id="outfits-panel" role="tabpanel" aria-labelledby="outfits-tab">
+        <div class="catalog-toolbar">
+          <h2>适合你的完整搭配</h2>
+          <div class="filter-set" aria-label="搭配场景">
+            <button class="is-active" type="button" data-outfit-filter="all">全部</button>
+            <button type="button" data-outfit-filter="commute">通勤</button>
+            <button type="button" data-outfit-filter="date">约会</button>
+            <button type="button" data-outfit-filter="social">轻社交</button>
+          </div>
+        </div>
+
+        <div class="catalog-outfit-grid">
+          <article class="catalog-outfit" data-category="social commute">
+            <figure class="catalog-outfit__media">
+              <img src="./assets/look-burgundy.jpg" alt="酒红斜肩上衣与米白阔腿裤完整搭配" />
+            </figure>
+            <div class="catalog-outfit__content">
+              <div>
+                <span class="eyebrow">轻社交 · 通勤</span>
+                <h3>酒红轻熟通勤</h3>
+                <p>暖调酒红提亮肤色，收腰上衣和阔腿裤共同强化轻盈比例。</p>
+              </div>
+              <div class="outfit-pieces"><span>斜肩上衣</span><span>阔腿长裤</span><span>细跟鞋</span></div>
+              <button class="button button--primary" type="button" data-try-on="酒红轻熟通勤">整套试穿</button>
+            </div>
+          </article>
+
+          <article class="catalog-outfit" data-category="commute">
+            <figure class="catalog-composition" aria-label="三件米杏色单品组成的通勤套装">
+              <img src="./assets/item-wrap-blouse.jpg" alt="米杏裹身上衣" />
+              <img src="./assets/item-belted-vest.jpg" alt="浅黄系带马甲" />
+              <img src="./assets/item-flared-trousers.jpg" alt="米色垂坠长裤" />
+            </figure>
+            <div class="catalog-outfit__content">
+              <div>
+                <span class="eyebrow">日常通勤</span>
+                <h3>柔雾轻盈套装</h3>
+                <p>米杏与浅黄叠出温和层次，垂坠长裤延展腿部线条。</p>
+              </div>
+              <div class="outfit-pieces"><span>裹身上衣</span><span>系带马甲</span><span>垂坠长裤</span></div>
+              <button class="button button--primary" type="button" data-try-on="柔雾轻盈套装">整套试穿</button>
+            </div>
+          </article>
+
+          <article class="catalog-outfit" data-category="date social">
+            <figure class="catalog-outfit__media">
+              <img src="./assets/look-green.jpg" alt="绿色修身上衣与白色长裤完整搭配" />
+            </figure>
+            <div class="catalog-outfit__content">
+              <div>
+                <span class="eyebrow">约会 · 轻社交</span>
+                <h3>薄荷清透搭配</h3>
+                <p>清浅绿色呼应春季型肤色，简洁剪裁让气质更明亮。</p>
+              </div>
+              <div class="outfit-pieces"><span>修身上衣</span><span>白色长裤</span><span>轻巧配饰</span></div>
+              <button class="button button--primary" type="button" data-try-on="薄荷清透搭配">整套试穿</button>
+            </div>
+          </article>
+
+          <article class="catalog-outfit" data-category="date commute">
+            <figure class="catalog-composition" aria-label="米白上衣与两款浅色长裤组成的可选套装">
+              <img src="./assets/item-cream-tee.jpg" alt="米白短袖上衣" />
+              <img src="./assets/item-wide-trousers.jpg" alt="白色阔腿裤" />
+              <img src="./assets/item-flared-trousers.jpg" alt="米色微喇长裤" />
+            </figure>
+            <div class="catalog-outfit__content">
+              <div>
+                <span class="eyebrow">约会 · 通勤</span>
+                <h3>米白净柔套装</h3>
+                <p>同色系上衣可搭配两种裤型，在轻松与利落之间切换。</p>
+              </div>
+              <div class="outfit-pieces"><span>米白上衣</span><span>阔腿长裤</span><span>微喇长裤</span></div>
+              <button class="button button--primary" type="button" data-try-on="米白净柔套装">整套试穿</button>
+            </div>
+          </article>
+        </div>
+
+        <p class="empty-state" data-outfit-empty hidden>这个场景暂时没有推荐搭配。</p>
+      </section>
+
+      <section class="catalog-panel" id="items-panel" role="tabpanel" aria-labelledby="items-tab" hidden>
+        <div class="catalog-toolbar">
+          <h2>可自由组合的推荐单品</h2>
+          <div class="filter-set" aria-label="单品类别">
+            <button class="is-active" type="button" data-item-filter="all">全部</button>
+            <button type="button" data-item-filter="tops">上装</button>
+            <button type="button" data-item-filter="bottoms">下装</button>
+          </div>
+        </div>
+
+        <div class="catalog-item-grid">
+          <article class="catalog-item" data-category="tops"><figure><img src="./assets/item-wrap-blouse.jpg" alt="米杏裹身上衣" /></figure><div><span>上装</span><h3>米杏裹身上衣</h3><p>收腰 · 暖柔色</p><button type="button" data-try-on="米杏裹身上衣">试穿该款</button></div></article>
+          <article class="catalog-item" data-category="tops"><figure><img src="./assets/item-belted-vest.jpg" alt="浅黄系带马甲" /></figure><div><span>上装</span><h3>浅黄系带马甲</h3><p>层次 · 强调腰线</p><button type="button" data-try-on="浅黄系带马甲">试穿该款</button></div></article>
+          <article class="catalog-item" data-category="bottoms"><figure><img src="./assets/item-flared-trousers.jpg" alt="米色垂坠长裤" /></figure><div><span>下装</span><h3>米色垂坠长裤</h3><p>高腰 · 修饰比例</p><button type="button" data-try-on="米色垂坠长裤">试穿该款</button></div></article>
+          <article class="catalog-item" data-category="bottoms"><figure><img src="./assets/item-wide-trousers.jpg" alt="白色阔腿裤" /></figure><div><span>下装</span><h3>白色阔腿裤</h3><p>垂坠 · 轻盈延展</p><button type="button" data-try-on="白色阔腿裤">试穿该款</button></div></article>
+          <article class="catalog-item" data-category="tops" data-extra hidden><figure><img src="./assets/item-cream-tee.jpg" alt="米白短袖上衣" /></figure><div><span>上装</span><h3>米白短袖上衣</h3><p>简洁 · 柔和百搭</p><button type="button" data-try-on="米白短袖上衣">试穿该款</button></div></article>
+          <article class="catalog-item" data-category="tops" data-extra hidden><figure><img src="./assets/item-mint-tee.jpg" alt="薄荷绿短袖上衣" /></figure><div><span>上装</span><h3>薄荷绿短袖上衣</h3><p>清透 · 提亮肤色</p><button type="button" data-try-on="薄荷绿短袖上衣">试穿该款</button></div></article>
+          <article class="catalog-item" data-category="tops" data-extra hidden><figure><img src="./assets/item-blue-tee.jpg" alt="浅蓝短袖上衣" /></figure><div><span>上装</span><h3>浅蓝短袖上衣</h3><p>低饱和 · 日常轻松</p><button type="button" data-try-on="浅蓝短袖上衣">试穿该款</button></div></article>
+          <article class="catalog-item" data-category="tops" data-extra hidden><figure><img src="./assets/item-white-tee.jpg" alt="净白短袖上衣" /></figure><div><span>上装</span><h3>净白短袖上衣</h3><p>基础 · 干净利落</p><button type="button" data-try-on="净白短袖上衣">试穿该款</button></div></article>
+        </div>
+
+        <button class="load-more" type="button" data-load-more>加载更多</button>
+        <p class="empty-state" data-item-empty hidden>这个类别暂时没有推荐单品。</p>
+      </section>
+    </main>
+
+    <div class="toast" role="status" aria-live="polite" hidden></div>
+    <script src="./recommendations.js"></script>
+  </body>
+</html>
