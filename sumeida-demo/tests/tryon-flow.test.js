@@ -68,7 +68,7 @@ test("recommendation image try-on keeps recommendation actions", () => {
   assert.match(html, /data-schemes>其他方案/);
 });
 
-test("first studio image try-on takes a photo and opens the result directly", () => {
+test("first studio image try-on takes a photo before background selection", () => {
   const context = createAppContext();
   setActiveCombination(context);
 
@@ -93,7 +93,7 @@ test("first studio image try-on takes a photo and opens the result directly", ()
   `, context);
   assert.deepEqual(
     { ...afterCapture },
-    { view: "imageTryon", photo: true, results: 1 }
+    { view: "backgroundSelect", photo: true, results: 0 }
   );
 });
 
@@ -122,7 +122,7 @@ test("manual pairing selects a compatible pairing item before continuing", () =>
 
   assert.deepEqual(
     { ...result },
-    { selectionView: "manualPairing", finalView: "imageTryon", pairingStyleId: "pairing-001" }
+    { selectionView: "manualPairing", finalView: "backgroundSelect", pairingStyleId: "pairing-001" }
   );
 });
 
@@ -152,7 +152,7 @@ test("realtime try-on also passes through mode selection", () => {
   );
 });
 
-test("an existing session photo opens image try-on without a background step", () => {
+test("an existing session photo opens background selection before generation", () => {
   const context = createAppContext();
   setActiveCombination(context, { photo: true });
 
@@ -162,7 +162,55 @@ test("an existing session photo opens image try-on without a background step", (
     ({ view: state.view, results: state.tryOnHistory.length });
   `, context);
 
-  assert.deepEqual({ ...result }, { view: "imageTryon", results: 1 });
+  assert.deepEqual({ ...result }, { view: "backgroundSelect", results: 0 });
+});
+
+test("style-004 single try-on uses the supplied camera, result and video assets", () => {
+  const context = createAppContext();
+  const result = vm.runInContext(`
+    state.styleId = "style-004";
+    addBaseStyle("style-004");
+    startImageTryOn();
+    chooseTryOnMode("single");
+    const cameraHtml = cameraView();
+    completeCapture();
+    generateImageTryOn();
+    const imageMedia = getSelectedTryOn().media;
+    generateVideoResult();
+    const videoMedia = getSelectedTryOn().media;
+    ({ view: state.view, cameraHtml, imageMedia, videoMedia, resultCount: state.tryOnHistory.length });
+  `, context);
+
+  assert.equal(result.view, "imageTryon");
+  assert.match(result.cameraHtml, /class="camera-feed"[^>]+assets\/lin\/iwEdAqNqcGcDAQTRA1UF0QUABrD6LkfxXRJzDQpoihSv5CsBB9IEnrJcCAAJomltCgAL0gAF9PY\.jpg/);
+  assert.equal(result.imageMedia, "assets/lin/Weixin Image_20260903182608_134_1308.png");
+  assert.equal(result.videoMedia, "assets/lin/gicuw9t4qw2j2ne1dpp3.mp4");
+  assert.equal(result.resultCount, 2);
+});
+
+test("style-004 is visible in the style library and uses its product image", () => {
+  const context = createAppContext();
+  const order = vm.runInContext(`config.styles.slice(0, 2).map(item => item.id)`, context);
+  const html = vm.runInContext(`state.view = "studio"; state.libraryTab = "styles"; studioView();`, context);
+
+  assert.deepEqual([...order], ["style-004", "style-001"]);
+  assert.match(html, /深灰翻领拉链外套/);
+  assert.match(html, /assets\/styles\/男\/_W7A6740\.jpg/);
+});
+
+test("style-004 exposes the supplied video for realtime single try-on", () => {
+  const context = createAppContext();
+  const result = vm.runInContext(`
+    state.styleId = "style-004";
+    addBaseStyle("style-004");
+    startRealtimeTryOn();
+    chooseTryOnMode("single");
+    ({ view: state.view, media: getCombination(state.realtimeComboId).realtime, modeHtml: tryonModeView() });
+  `, context);
+
+  assert.equal(result.view, "realtime");
+  assert.equal(result.media, "assets/lin/gicuw9t4qw2j2ne1dpp3.mp4");
+  assert.match(result.modeHtml, /data-tryon-choice="manual" disabled/);
 });
 
 test("continue design returns to the correct source flow", () => {
@@ -218,12 +266,12 @@ test("report expands to the recommendation list and has no scan entry", () => {
   assert.doesNotMatch(html, /data-scan|扫码选款/);
 });
 
-test("image try-on result supports takeaway and no background adjustment", () => {
+test("image try-on result supports takeaway and background adjustment", () => {
   const context = createAppContext();
   setActiveCombination(context, { photo: true });
   const html = vm.runInContext(`generateImageTryOn(); imageTryonView();`, context);
   assert.match(html, /data-takeaway/);
-  assert.doesNotMatch(html, /data-change-background|换背景/);
+  assert.match(html, /data-change-background>换背景/);
 });
 
 test("a base style never borrows try-on media from another style", () => {
@@ -336,4 +384,44 @@ test("configured fabrics are ordered before unavailable fabrics for the active s
   assert.equal(result.style1[0], "fabric-002");
   assert.deepEqual(Array.from(result.style2.slice(0, 2)), ["fabric-001", "fabric-003"]);
   assert.deepEqual(Array.from(result.style3.slice(0, 2)), ["fabric-006", "fabric-007"]);
+});
+
+
+test("background selection supports returning and generates the selected scene", () => {
+  const context = createAppContext();
+  setActiveCombination(context, { photo: true });
+  const result = vm.runInContext(`
+    startImageTryOn(); chooseTryOnMode("single");
+    const html = backgroundSelectView();
+    back(); const returned = state.view;
+    chooseTryOnMode("single"); state.backgroundId = "bg-mountain";
+    generateImageTryOn();
+    ({ html, returned, view: state.view, background: getSelectedTryOn().backgroundId,
+       media: getSelectedTryOn().media, expected: getActiveCombo().tryonByBackground["bg-mountain"] });
+  `, context);
+  assert.equal((result.html.match(/data-background=/g) || []).length, 6);
+  assert.equal(result.returned, "tryonMode");
+  assert.equal(result.view, "imageTryon");
+  assert.equal(result.background, "bg-mountain");
+  assert.equal(result.media, result.expected);
+});
+
+
+test("result background changes can be cancelled and confirmed without losing history", () => {
+  const context = createAppContext();
+  setActiveCombination(context, { photo: true });
+  const result = vm.runInContext(`
+    generateImageTryOn();
+    const original = state.selectedTryOnId, oldBackground = state.backgroundId;
+    changeBackground(); state.backgroundId = "bg-mountain"; back();
+    const cancelled = state.view === "imageTryon" && state.selectedTryOnId === original && state.backgroundId === oldBackground;
+    changeBackground(); state.backgroundId = "bg-mountain"; generateImageTryOn();
+    ({ cancelled, view: state.view, background: getSelectedTryOn().backgroundId,
+       preserved: state.tryOnHistory.some(r=>r.id === original), staleStep: state.backStack.at(-1) === "backgroundSelect" });
+  `, context);
+  assert.equal(result.cancelled, true);
+  assert.equal(result.view, "imageTryon");
+  assert.equal(result.background, "bg-mountain");
+  assert.equal(result.preserved, true);
+  assert.equal(result.staleStep, false);
 });

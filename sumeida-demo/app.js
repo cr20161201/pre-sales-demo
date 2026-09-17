@@ -111,6 +111,7 @@ const initialState = () => ({
   backgroundMode: "new",
   realtimeComboId: null,
   tryonMode: null,
+  tryonPath: null,
   pairingStyleId: null,
   toast: "",
   generating: false,
@@ -140,6 +141,7 @@ const getCombination = id => {
   const styleId = id.slice(5);
   const style = getStyle(styleId);
   if (!style) return null;
+  const singleTryOn = style.singleTryOn;
   const mediaSource = config.combinations.find(item => item.styleId === styleId && Object.keys(item.tryonByBackground || {}).length)
     || config.combinations.find(item => item.styleId === styleId);
   return {
@@ -148,9 +150,13 @@ const getCombination = id => {
     fabricId: null,
     image: style.image,
     presentation: style.presentation,
-    tryonByBackground: mediaSource?.tryonByBackground || {},
-    video: mediaSource?.video,
-    realtime: mediaSource?.realtime,
+    tryonByBackground: singleTryOn?.resultImage
+      ? Object.fromEntries(SUMEIDA_BACKGROUND_IDS.map(backgroundId => [backgroundId, singleTryOn.resultImage]))
+      : mediaSource?.tryonByBackground || {},
+    video: singleTryOn?.video || mediaSource?.video,
+    realtime: singleTryOn?.video || mediaSource?.realtime,
+    cameraImage: singleTryOn?.cameraImage,
+    singleOnly: Boolean(singleTryOn?.singleOnly),
     isBase: true,
     local: Boolean(style.local)
   };
@@ -175,6 +181,10 @@ function go(view, remember = true) {
 }
 
 function back() {
+  if (state.view === "backgroundSelect" && state.backgroundMode === "change") {
+    state.backgroundId = getSelectedTryOn()?.backgroundId || state.backgroundId;
+    state.backgroundMode = "new";
+  }
   state.view = state.backStack.pop() || "home";
   state.locale = state.view === "home" ? state.homeLocale : "zh";
   document.documentElement.lang = state.locale === "en" ? "en" : "zh-CN";
@@ -241,6 +251,7 @@ function renderView() {
     studio: studioView,
     imageTryon: imageTryonView,
     tryonMode: tryonModeView,
+    backgroundSelect: backgroundSelectView,
     manualPairing: manualPairingView,
     realtime: realtimeView
   };
@@ -256,7 +267,7 @@ function homeView() {
     <button data-home-slide="next" aria-label="${state.locale === "en" ? "Next image" : "下一张"}">›</button>
   </div>` : "";
   return `<section class="home formal-home">
-    <header class="home-masthead"><div class="brand-lockup"><strong>SUMEC</strong><span>苏美达</span><small>TEXTILE & LIGHT INDUSTRY</small></div>${localeControl()}</header>
+    <header class="home-masthead"><a class="brand-lockup" href="#" data-go="home" aria-label="苏美达 SUMEC"><img src="assets/brand/sumec-logo-white.png" alt="苏美达 SUMEC"></a>${localeControl()}</header>
     <div class="home-visual">
       <img class="home-carousel-image" src="${homeImages[slideIndex]}" alt="${state.locale === "en" ? `Fashion look ${slideIndex + 1}` : `男装展示 ${slideIndex + 1}`}">
       ${carouselControls}
@@ -290,7 +301,9 @@ function consentView() {
 
 function cameraView() {
   const title = state.captureTarget === "diagnosis" ? "形象采集" : "试穿照片采集";
-  return `${topbar(title)}<section class="page camera-stage formal-camera"><div class="camera-status"><i></i><span><b>已进入拍摄区域</b><small>请站在轮廓范围内，保持自然站姿</small></span></div><div class="camera-guide"><span class="camera-head"></span><span class="camera-shoulders"></span><span class="camera-body"></span></div><div class="camera-console"><div><span>全身采集</span><strong>请面向屏幕</strong></div><button class="capture" data-capture aria-label="拍照"></button><small>点击拍摄</small></div></section>`;
+  const combo = state.captureTarget === "imageTryon" && state.tryonPath === "single" ? getActiveCombo() : null;
+  const cameraImage = combo?.cameraImage;
+  return `${topbar(title)}<section class="page camera-stage formal-camera ${cameraImage ? "has-camera-feed" : ""}">${cameraImage ? `<img class="camera-feed" src="${cameraImage}" alt="预制拍摄画面">` : ""}<div class="camera-status"><i></i><span><b>已进入拍摄区域</b><small>请站在轮廓范围内，保持自然站姿</small></span></div><div class="camera-guide"><span class="camera-head"></span><span class="camera-shoulders"></span><span class="camera-body"></span></div>${cameraImage ? `<span class="demo-badge camera-feed-badge">预制拍摄画面</span>` : ""}<div class="camera-console"><div><span>全身采集</span><strong>请面向屏幕</strong></div><button class="capture" data-capture aria-label="拍照"></button><small>点击拍摄</small></div></section>`;
 }
 
 function loadingView() {
@@ -402,7 +415,7 @@ function imageTryonView() {
   const combo = getCombination(result.comboId);
   const style = getStyle(combo.styleId);
   const adjustmentTools = result.type === "image"
-    ? `<div class="result-tool-group single-tool"><button data-generate-video>生成视频</button></div>`
+    ? `<div class="result-tool-group"><button data-change-background>换背景</button><button data-generate-video>生成视频</button></div>`
     : `<div class="result-status"><i></i><span><strong>视频已生成</strong><small>已保存在本次试穿记录</small></span></div>`;
   const nextActions = isStudioFlow
     ? `<button class="primary-btn" data-continue-design>继续设计</button><button class="result-link-btn" data-schemes>选择已完成方案</button>`
@@ -558,6 +571,10 @@ function generateImageTryOn() {
     toast("当前方案暂无预制图片试衣素材");
     return false;
   }
+  if (combo.singleOnly && state.tryonPath !== "single") {
+    toast("该演示款仅支持单款试穿");
+    return false;
+  }
   state.comboId = combo.id;
   state.styleId = combo.styleId;
   state.fabricId = combo.fabricId;
@@ -567,13 +584,36 @@ function generateImageTryOn() {
     if (!state.tryOnHistory.some(item => item.id === id)) state.tryOnHistory.unshift({ id, type: "image", comboId: combo.id, backgroundId: state.backgroundId, media: combo.image, local: true });
     state.selectedTryOnId = id;
   } else if (!createImageResult(combo.id, state.backgroundId)) return false;
-  go("imageTryon");
+  const changing = state.backgroundMode === "change";
+  if (changing && state.backStack.at(-1) === "imageTryon") state.backStack.pop();
+  state.backgroundMode = "new";
+  go("imageTryon", !changing);
   return true;
 }
 
 function tryonModeView() {
   const isRealtime = state.tryonMode === "realtime";
-  return `${topbar(isRealtime ? "实时试穿" : "图片试穿")}<section class="page center-page tryon-mode-page"><div class="tryon-mode-panel panel"><p class="section-kicker">TRY-ON MODE</p><h1>选择试穿方式</h1><p>可直接试穿当前方案，也可以先选择一件搭配单品。</p><div class="tryon-mode-grid two-options"><button class="tryon-mode-card" data-tryon-choice="single"><strong>单件试穿</strong><span>直接试穿当前方案</span></button><button class="tryon-mode-card featured" data-tryon-choice="manual"><strong>手动搭配</strong><span>从款式库选择搭配款</span></button></div></div></section>`;
+  const singleOnly = Boolean(getActiveCombo()?.singleOnly);
+  const manualOption = singleOnly
+    ? `<button class="tryon-mode-card unavailable" data-tryon-choice="manual" disabled><strong>手动搭配</strong><span>该演示款仅支持单款试穿</span></button>`
+    : `<button class="tryon-mode-card featured" data-tryon-choice="manual"><strong>手动搭配</strong><span>从款式库选择搭配款</span></button>`;
+  return `${topbar(isRealtime ? "实时试穿" : "图片试穿")}<section class="page center-page tryon-mode-page"><div class="tryon-mode-panel panel"><p class="section-kicker">TRY-ON MODE</p><h1>选择试穿方式</h1><p>可直接试穿当前方案，也可以先选择一件搭配单品。</p><div class="tryon-mode-grid two-options"><button class="tryon-mode-card" data-tryon-choice="single"><strong>单件试穿</strong><span>${singleOnly ? "使用预制拍摄画面和试穿结果" : "直接试穿当前方案"}</span></button>${manualOption}</div></div></section>`;
+}
+
+function changeBackground() {
+  const result = getSelectedTryOn();
+  if (!result || result.type !== "image") return;
+  const combo = getCombination(result.comboId);
+  if (!combo) return;
+  state.comboId = combo.id; state.styleId = combo.styleId; state.fabricId = combo.fabricId;
+  state.backgroundId = result.backgroundId;
+  if (combo.singleOnly) state.tryonPath = "single";
+  state.backgroundMode = "change";
+  go("backgroundSelect");
+}
+
+function backgroundSelectView() {
+  return `${topbar("选择试穿背景")}<section class="page background-page"><div class="background-heading"><h1>选择一个试穿背景</h1><p>场景用于本次演示选择，结果展示预制试衣成片。</p></div><div class="background-grid">${config.backgrounds.map(item => `<button class="background-card ${state.backgroundId === item.id ? "active" : ""}" data-background="${item.id}" aria-pressed="${state.backgroundId === item.id}"><img src="${item.image}" alt="${item.name}"><span><i></i><strong>${item.name}</strong><small>${item.description}</small></span></button>`).join("")}</div><div class="background-footer"><div><span>当前背景</span><strong>${getBackground(state.backgroundId)?.name || "请选择背景"}</strong></div><button class="primary-btn" data-confirm-background>${state.backgroundMode === "change" ? "确认更换背景" : "生成试穿效果"}</button></div></section>`;
 }
 
 function manualPairingView() {
@@ -634,7 +674,9 @@ function startImageTryOn() {
   }
   state.comboId = combo.id;
   ensureDesign(combo);
+  state.backgroundMode = "new";
   state.tryonMode = "image";
+  state.tryonPath = null;
   state.pairingStyleId = null;
   go("tryonMode");
 }
@@ -642,7 +684,7 @@ function startImageTryOn() {
 function completeCapture() {
   state.photo = true;
   if (state.captureTarget === "imageTryon") {
-    generateImageTryOn();
+    go("backgroundSelect");
     return;
   }
   goToReport();
@@ -665,15 +707,17 @@ function continueTryOn() {
     go("camera");
     return;
   }
-  generateImageTryOn();
+  go("backgroundSelect");
 }
 
 function chooseTryOnMode(mode) {
   if (mode === "manual") {
+    state.tryonPath = "manual";
     state.pairingStyleId = null;
     go("manualPairing");
     return;
   }
+  state.tryonPath = "single";
   state.pairingStyleId = null;
   continueTryOn();
 }
@@ -687,6 +731,7 @@ function startRealtimeTryOn() {
   state.comboId = combo.id;
   ensureDesign(combo);
   state.tryonMode = "realtime";
+  state.tryonPath = null;
   state.pairingStyleId = null;
   go("tryonMode");
 }
@@ -813,6 +858,9 @@ function bind() {
   document.querySelectorAll("[data-upload-input]").forEach(input => input.onchange = () => { addUploadedAsset(input.dataset.uploadInput, input.files?.[0]); input.value = ""; });
   document.querySelectorAll("[data-schemes]").forEach(button => button.onclick = schemesModal);
   document.querySelectorAll("[data-image-tryon]").forEach(button => button.onclick = startImageTryOn);
+  document.querySelectorAll("[data-background]").forEach(button => button.onclick = () => { state.backgroundId = button.dataset.background; render(); });
+  document.querySelectorAll("[data-change-background]").forEach(button => button.onclick = changeBackground);
+  document.querySelectorAll("[data-confirm-background]").forEach(button => button.onclick = generateImageTryOn);
   document.querySelectorAll("[data-realtime-tryon]").forEach(button => button.onclick = startRealtimeTryOn);
   document.querySelectorAll("[data-tryon-choice]").forEach(button => button.onclick = () => chooseTryOnMode(button.dataset.tryonChoice));
   document.querySelectorAll("[data-pairing-style]").forEach(button => button.onclick = () => { state.pairingStyleId = button.dataset.pairingStyle; render(); });

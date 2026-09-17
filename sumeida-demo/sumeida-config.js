@@ -3,7 +3,14 @@ const SUMEIDA_ASSET_ROOT = "assets/苏美达素材(1)";
 const SUMEIDA_STYLE_ASSETS = {
   "style-001": `${SUMEIDA_ASSET_ROOT}/款式1.jpg`,
   "style-002": `${SUMEIDA_ASSET_ROOT}/款式2.jpg`,
-  "style-003": `${SUMEIDA_ASSET_ROOT}/款式3.jpg`
+  "style-003": `${SUMEIDA_ASSET_ROOT}/款式3.jpg`,
+  "style-004": "assets/styles/男/_W7A6740.jpg"
+};
+
+const SUMEIDA_SINGLE_TRYON = {
+  cameraImage: "assets/lin/iwEdAqNqcGcDAQTRA1UF0QUABrD6LkfxXRJzDQpoihSv5CsBB9IEnrJcCAAJomltCgAL0gAF9PY.jpg",
+  resultImage: "assets/lin/Weixin Image_20260903182608_134_1308.png",
+  video: "assets/lin/gicuw9t4qw2j2ne1dpp3.mp4"
 };
 
 const SUMEIDA_TRYON_RESULTS = {
@@ -68,6 +75,7 @@ const SUMEIDA_COMBINATIONS = [
 window.SUMEIDA_CONFIG = {
   brand: { name: "SUMEIDA", cn: "苏美达", subtitle: "面料与服装智能创新体验" },
   styles: [
+    { id: "style-004", sampleNo: "DEMO-004", name: "深灰翻领拉链外套", color: "待确认", size: "待确认", department: "服装研发部", country: "中国", image: SUMEIDA_STYLE_ASSETS["style-004"], singleTryOn: { ...SUMEIDA_SINGLE_TRYON, singleOnly: true } },
     { id: "style-001", sampleNo: "SM-26001", name: "蓝白条纹拉链外套", color: "蓝白条纹", size: "M", department: "服装研发部", country: "中国", image: SUMEIDA_STYLE_ASSETS["style-001"], thumbnail: "assets/thumbnails/style-001-card.jpg" },
     { id: "style-002", sampleNo: "SM-26002", name: "修身长袖上衣", color: "棕色", size: "M", department: "服装研发部", country: "中国", image: SUMEIDA_STYLE_ASSETS["style-002"] },
     { id: "style-003", sampleNo: "SM-26003", name: "经典长袖衬衫", color: "深灰", size: "M", department: "服装研发部", country: "中国", image: SUMEIDA_STYLE_ASSETS["style-003"] }

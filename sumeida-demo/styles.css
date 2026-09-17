@@ -437,10 +437,8 @@ html,body{width:100%;height:100%;overflow:hidden}
 /* Formal UI samples: branded home and 55-inch design workspace. */
 .formal-home{position:relative;display:grid;grid-template-rows:1260px 900px;background:#f7f8f6}
 .home-masthead{position:absolute;z-index:8;top:0;left:0;right:0;height:116px;display:flex;align-items:center;justify-content:space-between;padding:0 54px;color:white}
-.brand-lockup{display:grid;grid-template-columns:auto auto;grid-template-rows:auto auto;align-items:baseline;gap:0 14px}
-.brand-lockup strong{font-size:31px;line-height:1;font-weight:900}
-.brand-lockup span{font-size:18px;font-weight:800}
-.brand-lockup small{grid-column:1/-1;margin-top:7px;color:rgba(255,255,255,.72);font-size:9px;font-weight:700;letter-spacing:2px}
+.brand-lockup{display:flex;align-items:center;width:190px;height:64px}
+.brand-lockup img{display:block;width:100%;height:auto;max-height:64px;object-fit:contain;object-position:left center}
 .locale-control{display:inline-grid;grid-template-columns:1fr 1fr;min-width:128px;padding:4px;border:1px solid rgba(255,255,255,.45);background:rgba(10,33,27,.28)}
 .locale-control button{min-width:58px;height:38px;padding:0 10px;border:0;background:transparent;color:inherit;font-size:12px;font-weight:800;cursor:pointer}
 .locale-control button.active{background:white;color:#123e32}
@@ -650,3 +648,10 @@ html,body{width:100%;height:100%;overflow:hidden}
 .pairing-list-page .pairing-list-card .body{display:block;padding:18px}.pairing-list-page .pairing-list-card h3{font-size:19px}.pairing-list-page .pairing-list-card p{font-size:12px}
 .pairing-list-page .manual-pairing-footer{position:relative;z-index:2;height:112px;margin:0 -62px;padding:20px 62px;display:flex;align-items:center;justify-content:space-between;border-top:1px solid #d5dfda;background:white;box-shadow:0 -8px 24px rgba(26,43,36,.05)}
 .pairing-list-page .manual-pairing-footer>span{display:grid;gap:6px}.pairing-list-page .manual-pairing-footer small{color:var(--muted);font-size:11px}.pairing-list-page .manual-pairing-footer strong{font-size:17px}.pairing-list-page .manual-pairing-footer .primary-btn{min-width:270px}
+
+/* Single-style try-on demo feed. */
+.formal-camera.has-camera-feed:after{content:"";position:absolute;inset:0;z-index:1;background:linear-gradient(180deg,rgba(9,25,18,.2),rgba(9,25,18,.05) 48%,rgba(8,18,14,.28))}
+.camera-feed{position:absolute;inset:0;z-index:0;width:100%;height:100%;object-fit:cover;opacity:.9;filter:saturate(.82) contrast(.92)}
+.formal-camera.has-camera-feed .camera-guide{z-index:2}
+.camera-feed-badge{z-index:4}
+.tryon-mode-page .tryon-mode-card.unavailable{cursor:not-allowed;opacity:.55;background:#eef2f0;border-color:#cbd6d1}
