@@ -1,0 +1,32 @@
+(async () => {
+ const $=s=>document.querySelector(s),results=[];
+ const click=s=>{const e=$(s);if(!e)throw new Error('Missing '+s);e.click();};
+ const action=a=>click(`[data-action="${a}"]`);
+ const check=(v,label)=>{if(!v)throw new Error(label);results.push(label);};
+ const category=c=>click(`[data-action="advice-category"][data-value="${c}"]`);
+ // Run from the initial main page in an isolated browser test session.
+ action('edit');$('#price').value='36.50';$('#minimum').value='200';$('#remark').value='保留原版型';action('plus');action('requirement');action('advice-open');
+ check($('#overlay').hidden&&!$('#advice-page').hidden&&$('#advice-text'),'Entry opens form directly');check(!$('.saved-advice'),'No empty-list detour');
+ action('advice-save-next');check($('#advice-error').textContent.includes('类别'),'Category required');category('尺寸');action('advice-save');check($('#advice-error').textContent.includes('文字'),'Text required');
+ $('#advice-text').value='袖长缩短 2cm，袖口保持原工艺。';click('[data-action="advice-tag"][data-value="袖长"]');check($('#advice-text').value.includes('2cm'),'Tag selection preserves text');
+ const transfer=new DataTransfer();transfer.items.add(new File(['<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200"><rect width="200" height="200" fill="#00756d"/></svg>'],'note.svg',{type:'image/svg+xml'}));$('#advice-upload').files=transfer.files;$('#advice-upload').dispatchEvent(new Event('change',{bubbles:true}));
+ for(let i=0;i<100 && $('[data-action="advice-save"]').disabled;i++)await new Promise(r=>setTimeout(r,30));
+ check($('.advice-photo img')?.src.startsWith('data:image/jpeg'),'Photo upload and compression');action('advice-preview');check($('#photo-preview'),'Photo enlargement');action('advice-preview-close');action('advice-save-next');
+ check(document.querySelectorAll('.saved-advice-row').length===1&&$('#advice-text').value===''&&!$('.advice-photo'),'Save and continue collapses record and clears form');
+ category('面料');$('#advice-text').value='换成更轻薄的面料';action('advice-save-next');check(document.querySelectorAll('.saved-advice-row').length===2,'Multiple summaries accumulate');
+ action('advice-edit');check($('#advice-text').value.includes('2cm')&&$('.advice-photo'),'Summary loads original text and photos');
+ $('#advice-text').value='袖长缩短 3cm';action('advice-save-next');check(document.querySelectorAll('.saved-advice-row').length===2&&$('.saved-text').textContent.includes('3cm'),'Editing updates instead of duplicating');
+ $('#advice-text').value='未保存的新建议';action('advice-edit');check(!$('#discard-warning').hidden,'Switching to a summary protects unsaved input');action('advice-keep');check($('#advice-text').value==='未保存的新建议','Continue editing retains content');action('advice-edit');action('advice-discard');check($('#advice-text').value==='袖长缩短 3cm','Discard continues to intended summary');
+ action('advice-photo-remove');action('back');check(!$('#discard-warning').hidden,'Back protects unsaved photo changes');action('advice-discard');check(!$('#overlay').hidden&&$('#advice-page').hidden,'Discard returns directly to quote');
+ check($('#price').value==='36.50'&&$('#minimum').value==='200'&&$('#remark').value==='保留原版型'&&$('#quantity').value==='2'&&$('.requirement-grid .selected'),'Quote draft preserved');
+ check($('.advice-entry-count').textContent==='2条','Quote count updated');action('advice-open');check($('#advice-text').value===''&&document.querySelectorAll('.saved-advice-row').length===2,'Re-entry ready for new note with summaries');
+ category('工艺');$('#advice-text').value='领口增加明线';action('advice-save');check($('#advice-page').hidden&&$('.advice-entry-count').textContent==='3条','Save and return writes note and exits');
+ action('advice-open');action('advice-save');check($('#advice-page').hidden&&$('.advice-entry-count').textContent==='3条','Return after continue does not create blank note');
+ action('advice-open');$('#advice-summary-filter').value='面料';$('#advice-summary-filter').dispatchEvent(new Event('change',{bubbles:true}));check(document.querySelectorAll('.saved-advice-row').length===1,'Summary category filter');
+ action('advice-edit');action('advice-delete');action('advice-delete-cancel');check(document.querySelectorAll('.saved-advice-row').length===1,'Delete cancellation');action('advice-delete');action('advice-delete-confirm');check($('#advice-text').value===''&&$('.saved-advice-heading').textContent.includes('2 条'),'Delete returns to blank inline form');
+ action('back');action('confirm-edit');click('.product:nth-child(2) .edit-product');action('advice-open');check(!$('.saved-advice'),'Product suggestions isolated');action('back');action('close');
+ click('.product:first-child .edit-product');action('advice-open');category('其他');$('#advice-text').value='临时';action('advice-save');action('close');click('.product:first-child .edit-product');check($('.advice-entry-count').textContent==='2条','Quote cancel discards its unconfirmed edits');action('close');action('save');
+ const data=JSON.parse(localStorage.getItem('cr-assisted-selection-v1'));check(data.products[0].suggestions.length===2&&data.products[0].suggestions[0].photos.length===1,'Local draft retains notes and original photo');
+ action('customer');action('pick-customer');action('order');check($('.order-advice').textContent.includes('3cm'),'Order summary includes modifications');action('close');
+ return window.__adviceTestResult={passed:results.length,results};
+})().catch(error=>{window.__adviceTestResult={error:error.message};});

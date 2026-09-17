@@ -1,0 +1,68 @@
+{
+  "assets": [
+    {
+      "id": "reference-plaid-approximation",
+      "path": "assets/plaid-fabric.svg",
+      "sourceType": "locally-drawn",
+      "originalSource": "User-supplied screenshot visual reference; standalone fabric photograph unavailable",
+      "usage": "Approximate visual for both screenshot product records",
+      "provenance": "Original procedural SVG created for this demo; not the original product photograph",
+      "customerSpecific": false,
+      "simulatedResult": true
+    },
+    {
+      "id": "garment-demo-dress-black",
+      "path": "assets/styles/dress-black.svg",
+      "sourceType": "locally-drawn",
+      "usage": "成衣款式演示插画",
+      "provenance": "为本 Demo 绘制的 SVG，不是真实款式商品照",
+      "customerSpecific": false,
+      "simulatedResult": true
+    },
+    {
+      "id": "garment-demo-dress-blue",
+      "path": "assets/styles/dress-blue.svg",
+      "sourceType": "locally-drawn",
+      "usage": "成衣款式演示插画",
+      "provenance": "为本 Demo 绘制的 SVG，不是真实款式商品照",
+      "customerSpecific": false,
+      "simulatedResult": true
+    },
+    {
+      "id": "garment-demo-jacket-beige",
+      "path": "assets/styles/jacket-beige.svg",
+      "sourceType": "locally-drawn",
+      "usage": "成衣款式演示插画",
+      "provenance": "为本 Demo 绘制的 SVG，不是真实款式商品照",
+      "customerSpecific": false,
+      "simulatedResult": true
+    },
+    {
+      "id": "garment-demo-jacket-navy",
+      "path": "assets/styles/jacket-navy.svg",
+      "sourceType": "locally-drawn",
+      "usage": "成衣款式演示插画",
+      "provenance": "为本 Demo 绘制的 SVG，不是真实款式商品照",
+      "customerSpecific": false,
+      "simulatedResult": true
+    },
+    {
+      "id": "garment-demo-shirt-green",
+      "path": "assets/styles/shirt-green.svg",
+      "sourceType": "locally-drawn",
+      "usage": "成衣款式演示插画",
+      "provenance": "为本 Demo 绘制的 SVG，不是真实款式商品照",
+      "customerSpecific": false,
+      "simulatedResult": true
+    },
+    {
+      "id": "garment-demo-shirt-white",
+      "path": "assets/styles/shirt-white.svg",
+      "sourceType": "locally-drawn",
+      "usage": "成衣款式演示插画",
+      "provenance": "为本 Demo 绘制的 SVG，不是真实款式商品照",
+      "customerSpecific": false,
+      "simulatedResult": true
+    }
+  ]
+}

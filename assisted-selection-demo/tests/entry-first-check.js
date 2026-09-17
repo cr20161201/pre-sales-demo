@@ -1,0 +1,20 @@
+(async()=>{
+const $=s=>document.querySelector(s),a=n=>$(`[data-action="${n}"]`).click(),results=[];
+const check=(v,n)=>{if(!v)throw Error(n);results.push(n);};
+a('edit');$('#price').value='28';a('advice-open');
+check($('#advice-text').getBoundingClientRect().top<$('.saved-advice').getBoundingClientRect().top,'Form above records');
+check($('.photo-upload-actions').hidden&&$('.add-photo'),'One photo entry');
+a('photo-menu');check($('#photo-menu')&&$('.advice-content').inert,'Photo menu opens and blocks background');a('photo-menu-close');check(!$('#photo-menu')&&!$('.advice-content').inert,'Cancel restores form');
+a('photo-menu');a('back');check(!$('#photo-menu')&&!$('#advice-page').hidden,'Back dismisses photo menu only');
+a('advice-save-next');check($('#advice-error').textContent.includes('类别'),'Category required');
+$('[data-action="advice-category"][data-value="尺寸"]').click();$('#advice-text').value='袖长缩短 2cm';
+const dt=new DataTransfer();dt.items.add(new File(['<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"><rect width="20" height="20" fill="green"/></svg>'],'test.svg',{type:'image/svg+xml'}));$('#advice-upload').files=dt.files;$('#advice-upload').dispatchEvent(new Event('change',{bubbles:true}));
+for(let i=0;i<100&&$('[data-action="advice-save-next"]').disabled;i++)await new Promise(r=>setTimeout(r,30));
+check($('.advice-photo img')?.src.startsWith('data:image/jpeg'),'Upload compressed and displayed');a('advice-preview');check($('#photo-preview'),'Preview works');a('advice-preview-close');a('advice-save-next');
+check($('.saved-advice-row')&&$('#advice-text').value===''&&!$('.advice-photo'),'Add clears text and photos');check($('.advice-category-options .selected').textContent==='尺寸','Category retained');
+$('#advice-text').value='衣长增加 1cm';a('advice-save-next');check(document.querySelectorAll('.saved-advice-row').length===2,'Continuous add');
+a('advice-edit');check($('#advice-text').value==='袖长缩短 2cm'&&$('[data-action="advice-save-next"]').textContent==='保存修改','Editing refills upper form');$('#advice-text').value='袖长缩短 3cm';a('advice-save-next');check(document.querySelectorAll('.saved-advice-row').length===2,'Edit does not duplicate');
+$('#advice-text').value='未完成';a('advice-finish');check(!$('#discard-warning').hidden,'Finish protects unfinished record');a('advice-keep');check($('#advice-text').value==='未完成','Continue keeps input');a('advice-finish');a('advice-discard');check($('#advice-page').hidden&&$('#price').value==='28'&&$('.advice-entry-count').textContent==='2条','Return preserves quote and records');
+a('advice-open');a('advice-finish');check($('#advice-page').hidden,'Blank form finish returns without validation');a('confirm-edit');a('save');check(JSON.parse(localStorage.getItem('cr-assisted-selection-v1')).products[0].suggestions[0].photos.length===1,'Draft includes photos');
+window.__entryResult={passed:results.length,results};
+})().catch(e=>window.__entryResult={error:e.message});
