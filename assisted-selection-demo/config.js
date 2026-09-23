@@ -6,7 +6,7 @@ window.DEMO_CONFIG = {
     { id: 'ST-20260914-002', name: '长袖衬衫', category: '衬衫', composition: '棉麻', image: 'assets/styles/shirt-green.svg' },
     { id: 'ST-20260914-003', name: '白衬衫', category: '衬衫', composition: '棉', image: 'assets/styles/shirt-white.svg' }
   ],
-  requirements: ['报价单', '款式开发', '款式信息', '面料信息', '检验证书', '1'],
+  requirements: ['报价单', '款式开发', '款式信息', '面料信息', '检验证书'],
   adviceCategories: {
     '工艺': ['缝制', '领口', '袖口', '辅料', '其他'],
     '尺寸': ['衣长', '袖长', '胸围', '肩宽', '其他'],
