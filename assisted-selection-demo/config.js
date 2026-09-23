@@ -1,6 +1,7 @@
 window.DEMO_CONFIG = {
   legacyStyleIds: { 'FAB-20260914-002': 'ST-20260914-002', 'FAB-20260914-003': 'ST-20260914-003' },
   storageKey: 'cr-assisted-selection-v1',
+  adviceConfigKey: 'cr-assisted-advice-config-v1',
   products: [
     { id: 'ST-20260914-002', name: '长袖衬衫', category: '衬衫', composition: '棉麻', image: 'assets/styles/shirt-green.svg' },
     { id: 'ST-20260914-003', name: '白衬衫', category: '衬衫', composition: '棉', image: 'assets/styles/shirt-white.svg' }
