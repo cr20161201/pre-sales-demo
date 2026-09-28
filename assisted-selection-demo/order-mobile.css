@@ -19,3 +19,5 @@
 .note-group{font-size:12px;color:#888;margin-bottom:6px}
 
 .colorway-results{margin:16px 0}.colorway-results h3{font-size:14px;margin:0 0 12px}.colorway-results h4{font-size:13px;font-weight:400;margin:10px 0 8px}.colorway-results table{width:100%;table-layout:fixed;border-collapse:collapse;font-size:12px}.colorway-results th,.colorway-results td{padding:8px;border:1px solid #e6e9ee;text-align:left;overflow-wrap:anywhere;white-space:normal}.colorway-results th{color:#888;font-weight:400}
+
+.bottom{gap:6px;padding-left:12px;padding-right:12px}.bottom button{font-size:12px;white-space:nowrap;padding-left:6px;padding-right:6px}.bottom #resample{color:#1677ff;border:1px solid #1677ff}

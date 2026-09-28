@@ -4,3 +4,5 @@ body{background:#fff;color:#555}main{max-width:none;padding:0 24px;margin-left:2
 .field-table .row-actions{display:flex;gap:16px}.field-table .row-actions button{border:0;background:none;color:#1677ff;font-size:12px;cursor:default;padding:0}.field-table .row-actions button:disabled{opacity:1;color:#1677ff}.field-table input:disabled{opacity:1;cursor:default}
 
 .field-table th.actions-heading,.field-table td:last-child{width:190px}.field-table .row-actions{display:flex;align-items:center;justify-content:flex-start;gap:18px}.field-table .row-actions button{min-width:24px}
+
+.tag-management-table td.row-actions{display:table-cell}.tag-management-table td.row-actions button+button{margin-left:18px}.field-table a.text-link{text-decoration:none}.tag-management-table .row-actions button{cursor:pointer}

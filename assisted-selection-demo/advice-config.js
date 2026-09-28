@@ -15,7 +15,7 @@
   const categories = defaults.map(category => ({...category, expanded: saved?.fields?.[category.name]?.expanded ?? category.expanded}));
   const escape = value => String(value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const table = document.querySelector('#categories');
-  table.innerHTML = categories.map(c => `<tr><td>${escape(c.name)}</td><td>${escape(c.english || c.name)}</td><td>列表单选</td><td><input type="checkbox" data-category="${escape(c.name)}" aria-label="${escape(c.name)}是否展开" ${c.expanded ? 'checked' : ''}></td><td class="row-actions"><button disabled>删除</button><button disabled>停用</button><button disabled>管理</button></td></tr>`).join('');
+  table.innerHTML = categories.map(c => `<tr><td>${escape(c.name)}</td><td>${escape(c.english || c.name)}</td><td>列表单选</td><td><input type="checkbox" data-category="${escape(c.name)}" aria-label="${escape(c.name)}是否展开" ${c.expanded ? 'checked' : ''}></td><td class="row-actions"><button disabled>删除</button><button disabled>停用</button><a class="text-link" href="advice-tags.html?category=${encodeURIComponent(c.name)}">管理</a></td></tr>`).join('');
   table.addEventListener('change', event => {
     const checkbox = event.target.closest('input[data-category]');
     if (!checkbox) return;

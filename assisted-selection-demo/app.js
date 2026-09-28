@@ -11,11 +11,15 @@ try {
 } catch {}
 const escape = value => String(value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const schemeCount=p=>new Set((p.modificationGroups||[]).map(n=>n.groupId||n.id)).size;
+const colorQuantity=c=>Math.max(1,Math.floor(Number(c?.quantity)||1));
+const colorQuantityTotal=p=>{const groups=new Map();for(const n of (p.modificationGroups||[])){const id=n.groupId||n.id;if(!groups.has(id))groups.set(id,n);}const total=[...groups.values()].flatMap(n=>normalizeColorways(n)).reduce((sum,c)=>sum+colorQuantity(c),0);return total||Math.max(1,Math.floor(Number(p.quantity)||1));};
 const isModification=n=>Boolean(n.category||n.text||n.tags?.length||n.photos?.length);
 const validPhoto=p=>typeof p==='string'&&(/^data:image\/(jpeg|png|webp);base64,/.test(p)||/^assets\/(?:[a-zA-Z0-9_-]+\/)*[a-zA-Z0-9_.-]+\.(?:svg|png|jpe?g|webp)$/i.test(p));
 const fresh = () => config.products.map(p => ({...p, quantity:1, price:'', minimum:'', currency:'CNY', requirements:[], remark:'', modificationGroups:[]}));
+let linkedOrder=null;
 let orderEditing=null;try{if(new URLSearchParams(location.search).has('editOrder'))orderEditing=JSON.parse(sessionStorage.getItem('cr-assisted-order-edit')||'null');}catch{}
-let products = fresh(), editing = null, lastFocus = null, toastTimer;
+const demoDraft=()=>({customer:{name:'陈晓',company:'云织服饰',phone:'13800138000'},products:[{...config.products[0],quantity:3,price:'',minimum:'',currency:'CNY',requirements:['报价单'],remark:'请确认修改后提供样衣。',schemePhotos:{},modificationGroups:[{id:'demo-item-1',groupId:'demo-scheme-1',category:'工艺',tags:['领口'],text:'领口增加一道加固工艺，走线与大身同色。',photos:[],colorways:[{id:'demo-color-1',quantity:2,colors:[{position:'A',material:'棉',code:'19-5513 TCX'},{position:'B',material:'棉',code:'11-0601 TCX'}]},{id:'demo-color-2',quantity:1,colors:[{position:'A',material:'棉麻',code:'13-0905 TCX'}]}],styleDescription:'日常通勤款，保留原版型，优化领口细节。',needleType:'12针',season:'春秋',size:'M / L'},{id:'demo-item-2',groupId:'demo-scheme-1',category:'尺寸',tags:['袖长'],text:'袖长缩短 2cm，袖口保持原工艺。',photos:[],colorways:[],styleDescription:'',needleType:'',season:'',size:''}]}]});
+let products = fresh(), editing = null, lastFocus = null, toastTimer, styleDetailFocus = null, styleDetailProduct=null, styleBackground=[];
 let adviceView = null, groupEditorId = null, noteDraft = null, noteBaseline = '', adviceFilter = '全部', pendingAdviceAction = null, pickerTags = [], popupFocus = null, uploading = false, quoteScroll = 0, schemeDrafts = {};
 let colorwayDraft=null, colorPositionIndex=null, schemeSnapshot=null;
 const expandedModifications=new Set();
@@ -23,7 +27,7 @@ const trash = '<svg viewBox="0 0 24 24"><path d="M3 5h18M9 2h6M5 5v17h14V5M9 9v9
 function notify(message) { $('#toast').textContent = message; $('#toast').hidden = false; clearTimeout(toastTimer); toastTimer = setTimeout(() => $('#toast').hidden = true, 2400); }
 function render() {
   $('#count').textContent = `(${products.length}款/${products.reduce((n,p)=>n+p.quantity,0)}件)`;
-  $('#products').innerHTML = products.length ? products.map(p => `<article class="product"><img class="product-image" src="${p.image}" alt="${escape(p.name||p.id)}"><div class="product-info"><h3 class="product-title" style="margin:0;font-weight:400">${escape(p.name||p.id)}</h3><p class="product-meta">款号: ${p.id}<br>品类: ${escape(p.category||'衬衫')}</p><button class="edit-product" data-action="edit" data-id="${p.id}" aria-label="编辑 ${p.id} 选款信息"><span class="tag">${schemeCount(p)?'修改方案 '+schemeCount(p)+'个':'编辑选款信息'}</span><span class="tag">${p.quantity}件</span><i class="chevron"></i></button></div><button class="delete" data-action="delete" data-id="${p.id}" aria-label="删除 ${p.id}">${trash}</button></article>`).join('') : '<div class="empty">暂无选品，点击“继续添加”选择款式</div>';
+  $('#products').innerHTML = products.length ? products.map(p => `<article class="product"><button class="product-image-button" data-action="style-preview" data-index="${products.indexOf(p)}" aria-label="查看${escape(p.name||p.id)}款式信息"><img class="product-image" src="${p.image}" alt="${escape(p.name||p.id)}"></button><div class="product-info"><h3 class="product-title" style="margin:0;font-weight:400">${escape(p.name||p.id)}</h3><p class="product-meta">款号: ${p.id}<br>品类: ${escape(p.category||'衬衫')}</p><button class="edit-product" data-action="edit" data-id="${p.id}" aria-label="编辑 ${p.id} 选款信息"><span class="tag">${schemeCount(p)?'修改方案 '+schemeCount(p)+'个':'编辑选款信息'}</span><span class="tag">${p.quantity}件</span><i class="chevron"></i></button></div><button class="delete" data-action="delete" data-id="${p.id}" aria-label="删除 ${p.id}">${trash}</button></article>`).join('') : '<div class="empty">暂无选品，点击“继续添加”选择款式</div>';
 }
 function footer(text,action){return `<div class="sheet-footer"><button class="primary" data-action="${action}">${text}</button><div class="home-indicator"></div></div>`;}
 function show(content, simple=false, label='编辑选品') {
@@ -39,7 +43,8 @@ function edit(id, resume=false) {
  editing.schemePhotos ||= {};
  editing.requirements ||= [];
  const p=editing;
- show(`<div class="sheet-content"><div class="sheet-product"><img src="${p.image}" alt="${escape(p.name||p.id)}"><h2>${p.id}</h2><button class="close" data-action="close" aria-label="关闭">×</button></div>${groupOverview(p)}<label class="field quote-field remark"><span>备注</span><input id="remark" placeholder="请输入备注" value="${escape(p.remark)}"></label><section class="requirements"><h2>额外需求</h2><div class="requirement-grid">${config.requirements.map(r=>`<button data-action="requirement" data-value="${escape(r)}" class="${p.requirements.includes(r)?'selected':''}" aria-pressed="${p.requirements.includes(r)}">${escape(r)}</button>`).join('')}</div></section><div class="quantity"><h2>数量</h2><div class="stepper"><button aria-label="减少数量" data-action="minus" ${p.quantity===1?'disabled':''}>−</button><output id="quantity">${p.quantity}</output><button aria-label="增加数量" data-action="plus">+</button><span>件</span></div></div></div>${footer('确定','confirm-edit')}`);
+ p.quantity=colorQuantityTotal(p);
+ show(`<div class="sheet-content"><div class="sheet-product"><button class="sheet-style-image" data-action="style-detail" aria-label="查看${escape(p.name||p.id)}款式信息"><img src="${p.image}" alt="${escape(p.name||p.id)}"></button><h2>${p.id}</h2><button class="close" data-action="close" aria-label="关闭">×</button></div>${groupOverview(p)}<label class="field quote-field remark"><span>备注</span><input id="remark" placeholder="请输入备注" value="${escape(p.remark)}"></label><section class="requirements"><h2>额外需求</h2><div class="requirement-grid">${config.requirements.map(r=>`<button data-action="requirement" data-value="${escape(r)}" class="${p.requirements.includes(r)?'selected':''}" aria-pressed="${p.requirements.includes(r)}">${escape(r)}</button>`).join('')}</div></section><div class="quantity"><h2>数量</h2><div class="stepper"><button aria-label="减少数量" data-action="minus" ${p.quantity===1?'disabled':''}>−</button><output id="quantity">${p.quantity}</output><button aria-label="增加数量" data-action="plus">+</button><span>件</span></div></div></div>${footer('确定','confirm-edit')}`);
  renderProductPhotos();
 }
 function groupOverview(product,readOnly=false){
@@ -48,11 +53,13 @@ function groupOverview(product,readOnly=false){
  const items=g.items.filter(isModification);
  const description=g.items.find(n=>n.styleDescription?.trim())?.styleDescription.trim()||'';
  const labels=[...new Set(items.map(n=>[n.category,...(n.tags||[])].filter(Boolean).join('·')).filter(Boolean))];
- const colors=normalizeColorways(g.items[0]).length;
+ const colorways=normalizeColorways(g.items[0]);
+ const colors=colorways.length;
+ const colorTotal=colorways.reduce((sum,c)=>sum+colorQuantity(c),0);
  const photos=(product.schemePhotos?.[g.id]?.length||0)+items.reduce((count,n)=>count+(n.photos?.length||0),0);
- const counts=[items.length?items.length+'条修改项':'',colors?colors+'套颜色':'',photos?photos+'张图片':''].filter(Boolean).join(' · ');
+ const counts=[items.length?items.length+'条修改项':'',colors?colors+'套颜色'+(colorTotal?' · '+colorTotal+'件':''):'',photos?photos+'张图片':''].filter(Boolean).join(' · ');
  const action=`data-action="group-open" data-group="${escape(g.id)}"`;
- return `<${readOnly?'div':'button'} class="scheme-summary-card scheme-entry" ${readOnly?'':action} ${readOnly?'':`aria-label="编辑方案${i+1}"`}><span class="scheme-entry-content"><span class="scheme-summary-title">方案${i+1}</span>${description?`<span class="scheme-summary-description">${escape(description)}</span>`:''}${labels.length?`<span class="scheme-summary-labels">修改内容：${labels.map(escape).join('、')}</span>`:''}${counts?`<span class="scheme-summary-counts">${counts}</span>`:''}</span>${readOnly?'':'<i class="chevron"></i>'}</${readOnly?'div':'button'}>`;
+ return `<${readOnly?'div':'button'} class="scheme-summary-card scheme-entry" ${readOnly?'':action} ${readOnly?'':`aria-label="编辑方案${i+1}"`}><span class="scheme-entry-content"><span class="scheme-summary-title">方案${i+1}</span>${description?`<span class="scheme-summary-description">${escape(description)}</span>`:''}${g.items[0]?.needleType||g.items[0]?.season||g.items[0]?.size?`<span class="scheme-summary-labels">${[g.items[0]?.needleType&&'针型 '+g.items[0].needleType,g.items[0]?.season&&'季节 '+g.items[0].season,g.items[0]?.size&&'尺码 '+g.items[0].size].filter(Boolean).map(escape).join(' · ')}</span>`:''}${labels.length?`<span class="scheme-summary-labels">修改内容：${labels.map(escape).join('、')}</span>`:''}${counts?`<span class="scheme-summary-counts">${counts}</span>`:''}</span>${readOnly?'':'<i class="chevron"></i>'}</${readOnly?'div':'button'}>`;
  }).join('')}${readOnly?'':'<button class="add-group" data-action="advice-add-group">＋ 新增方案</button>'}</section>`;
 }
 
@@ -89,19 +96,19 @@ function modificationCard(n,index){
 function modificationList(items,id){
  items=items.filter(isModification);
  const expanded=expandedModifications.has(id);
- return `<div id="modification-list">${(expanded?items:items.slice(0,3)).map(modificationCard).join('')}${items.length>3?`<button class="modification-toggle" data-action="modification-toggle" aria-expanded="${expanded}">${expanded?'收起':`查看全部（${items.length}条）`}</button>`:''}</div>`;
+ return `<div id="modification-list">${items.length?(expanded?items:items.slice(0,3)).map(modificationCard).join(''):'<p class="empty-hint">暂无修改内容</p>'}${items.length>3?`<button class="modification-toggle" data-action="modification-toggle" aria-expanded="${expanded}">${expanded?'收起':`查看全部（${items.length}条）`}</button>`:''}</div>`;
 }
 function openGroupEditor(groupId){
  if(!adviceView)schemeSnapshot=structuredClone(editing);
  const groups=[...new Map(editing.modificationGroups.map(n=>[n.groupId||n.id,[]])).keys()];
  const id=groupId||crypto.randomUUID(); groupEditorId=id; const items=editing.modificationGroups.filter(n=>(n.groupId||n.id)===id); const first=items[0]||{id:crypto.randomUUID(),groupId:id,colors:[],styleDescription:'',needleType:'',season:'',size:''}; Object.assign(first,schemeDrafts[id]||{}); first.colorways=normalizeColorways(first); noteDraft=structuredClone(first); adviceView='group';
- showAdvice(`方案${groups.indexOf(id)+1||groups.length+1}`,`<div class="group-editor"><header class="group-editor-head"><h2 class="scheme-section-title">修改内容</h2></header>${modificationList(items,id)}<button class="group-add-item" data-action="advice-add-item" data-group="${escape(id)}">＋ 新增修改项</button>${groupFields(first)}<section class="product-photo-section"><h2>方案图片 <small id="product-photo-count"></small></h2><div id="product-photos" class="advice-photos"></div><input id="product-camera" class="visually-hidden" type="file" accept="image/*" capture="environment"><input id="product-upload" class="visually-hidden" type="file" accept="image/*" multiple><p id="product-photo-status" class="photo-helper" role="status"></p></section></div>`,'完成','group-save');
+ showAdvice(`方案${groups.indexOf(id)+1||groups.length+1}`,`<div class="group-editor"><header class="group-editor-head"><h2 class="scheme-section-title">修改内容</h2><button class="section-add" data-action="advice-add-item" data-group="${escape(id)}">新增修改项</button></header>${modificationList(items,id)}${groupFields(first)}<section class="product-photo-section"><h2>方案图片 <small id="product-photo-count"></small></h2><div id="product-photos" class="advice-photos"></div><input id="product-camera" class="visually-hidden" type="file" accept="image/*" capture="environment"><input id="product-upload" class="visually-hidden" type="file" accept="image/*" multiple><p id="product-photo-status" class="photo-helper" role="status"></p></section></div>`,'完成','group-save');
  if(schemeSnapshot?.modificationGroups.some(n=>(n.groupId||n.id)===id))addDeleteFooter('方案','scheme-delete-confirm',id);
  renderProductPhotos();
 }
 function openGroupList(){
  const groups=[...new Map(editing.modificationGroups.map(n=>[n.groupId||n.id,[]])).keys()].map(id=>({id,items:editing.modificationGroups.filter(n=>(n.groupId||n.id)===id)}));
- showAdvice('修改内容',`<div class="group-list-page"><div class="group-list-intro"><h2>修改内容</h2><p>可新增多个组，每组可添加多条修改项。</p></div>${groups.map((g,i)=>`<article class="outer-group-card"><header><strong>组${i+1}</strong><span>${g.items.length}条修改项</span><button data-action="group-delete" data-group="${escape(g.id)}">删除组</button></header><button class="group-add-item" data-action="advice-add-item" data-group="${escape(g.id)}">＋ 新增修改项</button><div>${g.items.slice(0,2).map((n,j)=>`<button class="outer-group-item" data-action="group-open" data-id="${escape(n.id)}"><span>修改项${j+1} · ${escape(n.category||'未选类别')}</span><small>${escape(n.text||'未填写修改内容')}</small><i class="chevron"></i></button>`).join('')}${g.items.length>2?`<small class="group-more">还有 ${g.items.length-2} 条修改项</small>`:''}</div></article>`).join('')||'<div class="group-empty">暂无修改内容组</div>'}<button class="add-group" data-action="advice-add-group">＋ 新增组</button></div>`,'完成','advice-finish');
+ showAdvice('修改内容',`<div class="group-list-page"><div class="group-list-intro section-heading"><h2>修改方案</h2><button class="section-add" data-action="advice-add-group">新增方案</button></div>${groups.map((g,i)=>`<article class="outer-group-card"><header><strong>方案${i+1}</strong><span>${g.items.length}条修改项</span><button class="section-add" data-action="advice-add-item" data-group="${escape(g.id)}">新增修改项</button><button data-action="group-delete" data-group="${escape(g.id)}">删除方案</button></header><div>${g.items.slice(0,2).map((n,j)=>`<button class="outer-group-item" data-action="group-open" data-id="${escape(n.id)}"><span>修改项${j+1} · ${escape(n.category||'未选类别')}</span><small>${escape(n.text||'未填写修改内容')}</small><i class="chevron"></i></button>`).join('')}${g.items.length>2?`<small class="group-more">还有 ${g.items.length-2} 条修改项</small>`:''}</div></article>`).join('')||'<div class="group-empty">暂无修改方案</div>'}</div>`,'完成','advice-finish');
 }
 function addDeleteFooter(label,action,id){
  const host=$('#advice-page > .sheet-footer');
@@ -120,12 +127,12 @@ function returnToQuote(){
  adviceView=null;noteDraft=null;$('#advice-page').hidden=true;$('.navbar h1').textContent='代客选品';$('.back').setAttribute('aria-label','返回');
  edit(null,true);$('.sheet-content').scrollTop=quoteScroll;
 }
- function quoteNotes(notes){return notes.length?`<div class="quote-notes">${notes.map((n,i)=>`<div class="quote-note"><p class="quote-note-label">第${i+1}组 · ${escape(n.category)}${n.tags.length?' · '+n.tags.map(escape).join('、'):''}</p><p class="quote-note-text">${escape(n.text)}</p>${n.colors?.length?`<small>色位：${n.colors.map(c=>escape(`${c.position||''}${c.material?' · '+c.material:''}${c.code?' · '+c.code:''}`)).join('、')}</small>`:''}${n.photos.length?`<small>修改项附图 ${n.photos.length}张</small>`:''}</div>`).join('')}</div>`:'';}
+ function quoteNotes(notes){return notes.length?`<div class="quote-notes">${notes.map((n,i)=>`<div class="quote-note"><p class="quote-note-label">方案${i+1} · ${escape(n.category)}${n.tags.length?' · '+n.tags.map(escape).join('、'):''}</p><p class="quote-note-text">${escape(n.text)}</p>${n.colors?.length?`<small>色位：${n.colors.map(c=>escape(`${c.position||''}${c.material?' · '+c.material:''}${c.code?' · '+c.code:''}`)).join('、')}</small>`:''}${n.photos.length?`<small>修改项附图 ${n.photos.length}张</small>`:''}</div>`).join('')}</div>`:'';}
 function adviceSummary(){
  const notes=editing.modificationGroups, groups=[...new Map(notes.map(n=>[n.groupId||n.id,[]])).keys()].map(id=>({id,items:notes.filter(n=>(n.groupId||n.id)===id)}));
  const filtered=groups.filter(g=>adviceFilter==='全部'||g.items.some(n=>n.category===adviceFilter));
- if(!groups.length)return '<section class="saved-advice"><div class="saved-advice-heading">已录入 0 组</div><p class="saved-advice-empty">暂无修改内容</p><button class="add-group" data-action="advice-add-group">＋ 新增修改内容组</button></section>';
- return `<section class="saved-advice"><div class="saved-advice-heading">已录入 ${groups.length} 组修改内容<select aria-label="筛选已录入组" id="advice-summary-filter">${['全部',...Object.keys(config.adviceCategories)].map(c=>`<option ${c===adviceFilter?'selected':''}>${c}</option>`).join('')}</select></div><div class="saved-advice-rows">${filtered.map((g,index)=>`<article class="saved-group-card"><div class="group-card-heading"><b>第${groups.indexOf(g)+1}组</b><span>${g.items.length} 条修改项</span></div>${g.items.map((n,j)=>`<button class="saved-advice-row ${n.id===noteDraft.id?'active':''}" data-action="advice-edit" data-id="${escape(n.id)}"><span class="saved-record"><span class="saved-record-label"><b>修改项 ${j+1}</b><span class="saved-category">${escape(n.category||'未选类别')}</span><span class="saved-tags"> · ${n.tags.length?n.tags.map(escape).join('、'):'未选标签'}</span></span><span class="saved-text">${escape(n.text||'未填写修改内容')}</span></span>${n.photos.length?`<small>${n.photos.length}图</small>`:''}<i class="chevron"></i></button>`).join('')}<p class="group-item-count">组内资料：${g.items[0].fabricSeries||g.items[0].colors?.length?'已填写':'待填写'}</p><button class="group-add-item" data-action="advice-add-item" data-group="${escape(g.id)}">＋ 新增修改项</button></article>`).join('')}</div><button class="add-group" data-action="advice-add-group">＋ 新增修改内容组</button></section>`;
+ if(!groups.length)return '<section class="saved-advice"><div class="saved-advice-heading">已录入 0 个方案</div><p class="saved-advice-empty">暂无修改内容</p><button class="add-group" data-action="advice-add-group">＋ 新增方案</button></section>';
+ return `<section class="saved-advice"><div class="saved-advice-heading">已录入 ${groups.length} 个方案<select aria-label="筛选已录入方案" id="advice-summary-filter">${['全部',...Object.keys(config.adviceCategories)].map(c=>`<option ${c===adviceFilter?'selected':''}>${c}</option>`).join('')}</select></div><div class="saved-advice-rows">${filtered.map((g,index)=>`<article class="saved-group-card"><div class="group-card-heading"><b>方案${groups.indexOf(g)+1}</b><span>${g.items.length} 条修改项</span></div>${g.items.map((n,j)=>`<button class="saved-advice-row ${n.id===noteDraft.id?'active':''}" data-action="advice-edit" data-id="${escape(n.id)}"><span class="saved-record"><span class="saved-record-label"><b>修改项 ${j+1}</b><span class="saved-category">${escape(n.category||'未选类别')}</span><span class="saved-tags"> · ${n.tags.length?n.tags.map(escape).join('、'):'未选标签'}</span></span><span class="saved-text">${escape(n.text||'未填写修改内容')}</span></span>${n.photos.length?`<small>${n.photos.length}图</small>`:''}<i class="chevron"></i></button>`).join('')}<p class="group-item-count">方案资料：${g.items[0].fabricSeries||g.items[0].colors?.length?'已填写':'待填写'}</p><button class="group-add-item" data-action="advice-add-item" data-group="${escape(g.id)}">＋ 新增修改项</button></article>`).join('')}</div><button class="add-group" data-action="advice-add-group">＋ 新增方案</button></section>`;
 }
 function requestAdviceAction(action){
  if(uploading){notify('照片处理中，请稍候');return;}
@@ -198,8 +205,8 @@ function openNote(id,groupId){
 function captureNote(){if($('#advice-text'))noteDraft.text=$('#advice-text').value;for(const [key,id] of Object.entries({styleDescription:'style-description',needleType:'needle-type',season:'season',size:'size-code'})){const input=$('#'+id);if(input)noteDraft[key]=input.value;}if($('#color-table-body'))noteDraft.colors=[...$('#color-table-body').querySelectorAll('tr')].map(row=>({position:row.querySelector('.color-position').value,material:row.querySelector('.color-material').value.trim(),code:row.querySelector('.color-code').value.trim()})).filter(color=>color.position||color.material||color.code);}
 function normalizeColorways(n){
  const rows=colors=>(Array.isArray(colors)?colors:[]).map((c,i)=>typeof c==='string'?{position:String.fromCharCode(65+i),material:'',code:c}:{position:String(c.position||''),material:String(c.material||''),code:String(c.code||'')});
- if(Array.isArray(n.colorways))return n.colorways.map(c=>({id:String(c.id||crypto.randomUUID()),colors:rows(c.colors)}));
- return n.colors?.length?[{id:'legacy-color',colors:rows(n.colors)}]:[];
+ if(Array.isArray(n.colorways))return n.colorways.map(c=>({id:String(c.id||crypto.randomUUID()),quantity:colorQuantity(c),colors:rows(c.colors)}));
+ return n.colors?.length?[{id:'legacy-color',quantity:1,colors:rows(n.colors)}]:[];
 }
 function rememberScheme(){
  captureNote();
@@ -209,22 +216,24 @@ function colorTable(colors,editable=false){
  const letters=Array.from({length:26},(_,i)=>String.fromCharCode(65+i));
  return `<table class="color-table"><thead><tr><th>色位</th><th>原料</th><th>颜色编码</th>${editable?'<th></th>':''}</tr></thead><tbody ${editable?'id="colorway-rows"':''}>${colors.map((c,i)=>`<tr>${editable?`<td><button class="color-position" value="${escape(c.position||'A')}" data-action="color-position-open" data-index="${i}" aria-label="第${i+1}行色位 ${escape(c.position||'A')}" aria-haspopup="dialog"><span>${escape(c.position||'A')}</span><i class="chevron"></i></button></td><td><input class="color-material" aria-label="第${i+1}行原料" value="${escape(c.material)}" placeholder="请输入原料"></td><td><input class="color-code" aria-label="第${i+1}行颜色编码" value="${escape(c.code)}" placeholder="请输入颜色编码"></td><td><button class="remove-color" data-action="colorway-row-delete" data-index="${i}" aria-label="删除第${i+1}行色位">×</button></td>`:`<td>${escape(c.position||'—')}</td><td>${escape(c.material||'—')}</td><td>${escape(c.code||'—')}</td>`}</tr>`).join('')}</tbody></table>`;
 }
-function groupFields(n){return `<section class="advice-form-section group-fields"><h2 class="scheme-section-title">款式颜色</h2>${normalizeColorways(n).map((c,i)=>`<article class="colorway-card colorway-entry"><button class="colorway-entry-hit" data-action="colorway-edit" data-id="${escape(c.id)}" aria-label="编辑颜色${i+1}"></button><header><h3>颜色${i+1}</h3><i class="chevron"></i></header>${colorTable(c.colors)}</article>`).join('')}<button class="add-color-row" data-action="colorway-add">＋ 新增颜色</button><label>款式说明<input id="style-description" value="${escape(n.styleDescription||'')}" placeholder="请输入款式说明"></label><label>针种<input id="needle-type" value="${escape(n.needleType||'')}" placeholder="请输入针种"></label><label>季节<input id="season" value="${escape(n.season||'')}" placeholder="请输入季节"></label><label>尺寸码数<input id="size-code" value="${escape(n.size||'')}" placeholder="例如 48码或M码"></label></section>`;}
+function groupFields(n){const ways=normalizeColorways(n);return `<section class="advice-form-section group-fields"><header class="section-heading"><h2 class="scheme-section-title">款式颜色</h2><button class="section-add" data-action="colorway-add">新增颜色</button></header>${ways.map((c,i)=>`<article class="colorway-card colorway-entry"><button class="colorway-entry-hit" data-action="colorway-edit" data-id="${escape(c.id)}" aria-label="编辑颜色${i+1}"></button><header><h3>颜色${i+1}</h3><span class="colorway-quantity">${colorQuantity(c)}件</span><i class="chevron"></i></header>${colorTable(c.colors)}</article>`).join('')}${ways.length?'':'<p class="color-empty">暂无颜色</p>'}<label>款式说明<input id="style-description" value="${escape(n.styleDescription||'')}" placeholder="请输入款式说明"></label><label>针种<input id="needle-type" value="${escape(n.needleType||'')}" placeholder="请输入针种"></label><label>季节<input id="season" value="${escape(n.season||'')}" placeholder="请输入季节"></label><label>尺寸码数<input id="size-code" value="${escape(n.size||'')}" placeholder="例如 48码或M码"></label></section>`;}
 function openColorway(id){
  if(uploading){notify('照片处理中，请稍候');return;}
  rememberScheme();
  const existing=noteDraft.colorways.find(c=>c.id===id);
- colorwayDraft=existing?structuredClone(existing):{id:crypto.randomUUID(),colors:[]};
- if(!colorwayDraft.colors.length)colorwayDraft.colors.push({position:'A',material:'',code:''});
+ colorwayDraft=existing?structuredClone(existing):{id:crypto.randomUUID(),quantity:1,colors:[]};
+ colorwayDraft.quantity=colorQuantity(colorwayDraft);
+ if(!colorwayDraft.colors.length){const used=new Set(colorwayDraft.colors.map(c=>c.position).filter(Boolean));const next=Array.from({length:26},(_,i)=>String.fromCharCode(65+i)).find(letter=>!used.has(letter))||'A';colorwayDraft.colors.push({position:next,material:'',code:''});}
  adviceView='colorway';renderColorway();
 }
 function renderColorway(){
  const index=noteDraft.colorways.findIndex(c=>c.id===colorwayDraft.id);
- showAdvice(`颜色${index<0?noteDraft.colorways.length+1:index+1}`,`<section class="colorway-editor">${colorTable(colorwayDraft.colors,true)}<button class="add-color-row" data-action="colorway-row-add">＋ 添加色位</button></section>`,'完成','colorway-save');
+ showAdvice(`颜色${index<0?noteDraft.colorways.length+1:index+1}`,`<section class="colorway-editor"><div class="color-quantity-control"><span>数量</span><div class="stepper"><button data-action="color-minus" aria-label="减少颜色数量" ${colorwayDraft.quantity<=1?'disabled':''}>−</button><output>${colorwayDraft.quantity}</output><button data-action="color-plus" aria-label="增加颜色数量">+</button><span>件</span></div></div>${colorTable(colorwayDraft.colors,true)}<button class="add-color-row" data-action="colorway-row-add">＋ 新增色位</button></section>`,'完成','colorway-save');
 
  if(index>=0)addDeleteFooter('颜色','colorway-delete-confirm',colorwayDraft.id);
 }
 function captureColorway(){
+ colorwayDraft.quantity=Math.max(1,Math.floor(Number(document.querySelector('.color-quantity-control output')?.value||colorwayDraft.quantity||1)));
  colorwayDraft.colors=[...document.querySelectorAll('#colorway-rows tr')].map(row=>({position:row.querySelector('.color-position').value,material:row.querySelector('.color-material').value,code:row.querySelector('.color-code').value}));
 }
 function openColorPosition(index){
@@ -263,7 +272,10 @@ function renderNote(){
  const noteFooter=$('#advice-popup .sheet-footer')||$('#advice-page .sheet-footer');
  noteFooter.querySelector('.primary').textContent='完成';
  noteFooter.querySelector('.primary').dataset.action='advice-finish';
+ const nextButton=document.createElement('button');nextButton.className='secondary advice-next';nextButton.dataset.action='advice-save-next';nextButton.textContent='完成并新增';noteFooter.querySelector('.primary').textContent='完成';noteFooter.querySelector('.primary').after(nextButton);noteFooter.classList.add('advice-note-footer');
  if(isEdit)addDeleteFooter('修改项','advice-delete-confirm',n.id);
+ const finishButton=noteFooter.querySelector('[data-action="advice-finish"]'),addButton=noteFooter.querySelector('[data-action="advice-save-next"]');
+ finishButton?.classList.remove('primary');finishButton?.classList.add('secondary');addButton?.classList.remove('secondary');addButton?.classList.add('primary');
  renderPhotos();
 }
 function renderPhotos(){
@@ -315,16 +327,18 @@ function showPhotoMenu(){
  menu.addEventListener('keydown',e=>{if(e.key!=='Tab')return;const buttons=[...menu.querySelectorAll('button')];if(e.shiftKey&&document.activeElement===buttons[0]){e.preventDefault();buttons.at(-1).focus();}else if(!e.shiftKey&&document.activeElement===buttons.at(-1)){e.preventDefault();buttons[0].focus();}});
  menu.querySelector('button').focus();
 }
-function openStyleDetail(){
- captureNote();const p=editing;$('.advice-content').inert=true;$('#advice-page .sheet-footer').inert=true;
+function openStyleDetail(product=null){
+ const p=product||editing;if(!p||$('#style-detail'))return;styleDetailProduct=p;styleDetailFocus=document.activeElement;
+ if(adviceView)captureNote();
+ styleBackground=[...$('#app').children].map(element=>({element,inert:element.inert}));styleBackground.forEach(({element})=>element.inert=true);
  const page=document.createElement('section');page.id='style-detail';page.className='style-detail';page.setAttribute('role','dialog');page.setAttribute('aria-modal','true');page.setAttribute('aria-label','款式详情');
- page.innerHTML=`<header class="style-detail-header"><button data-action="style-detail-close" aria-label="返回修改内容">‹</button><h2>Style3D</h2><span class="detail-capsule">•••　│　◉</span></header><div class="style-detail-content"><button class="style-detail-hero" data-action="style-detail-image" aria-label="放大款式图片"><img src="${escape(p.image)}" alt="${escape(p.name)}"><span>▧ 图片</span></button><div class="style-detail-thumbnails"><button data-action="style-detail-image" aria-label="查看款式图片"><img src="${escape(p.image)}" alt="${escape(p.name)}"></button></div><h1>${escape(p.name)}</h1><dl>${[['名称',p.name],['内部编号',p.id],['品类',p.category],['成分',p.composition]].map(([label,value])=>`<div><dt>${label}：</dt><dd>${escape(value||'—')}</dd></div>`).join('')}</dl></div><footer class="style-detail-footer"><button data-action="style-share"><span>♧</span>分享</button><button data-action="style-detail-bag"><span>♙<b>${products.length}</b></span>选品袋</button><button class="selected-style" disabled>已选品</button></footer>`;
+ page.innerHTML=`<header class="style-detail-header"><button data-action="style-detail-close" aria-label="返回上一级">‹</button><h2>Style3D</h2><span class="detail-capsule">•••　│　◉</span></header><div class="style-detail-content"><button class="style-detail-hero" data-action="style-detail-image" aria-label="放大款式图片"><img src="${escape(p.image)}" alt="${escape(p.name)}"><span>▧ 图片</span></button><div class="style-detail-thumbnails"><button data-action="style-detail-image" aria-label="查看款式图片"><img src="${escape(p.image)}" alt="${escape(p.name)}"></button></div><h1>${escape(p.name)}</h1><dl>${[['名称',p.name],['内部编号',p.id],['品类',p.category],['成分',p.composition]].map(([label,value])=>`<div><dt>${label}：</dt><dd>${escape(value||'—')}</dd></div>`).join('')}</dl></div><footer class="style-detail-footer"><button data-action="style-share"><span>♧</span>分享</button><button data-action="style-detail-bag"><span>♙<b>${products.length}</b></span>选品袋</button><button class="selected-style" disabled>已选品</button></footer>`;
  $('#app').append(page);page.querySelector('button').focus();
  page.addEventListener('keydown',e=>{if(e.key!=='Tab')return;const buttons=[...page.querySelectorAll('button:not(:disabled)')];if(e.shiftKey&&document.activeElement===buttons[0]){e.preventDefault();buttons.at(-1).focus();}else if(!e.shiftKey&&document.activeElement===buttons.at(-1)){e.preventDefault();buttons[0].focus();}});
 }
-function closeStyleDetail(){ $('#style-detail')?.remove();$('.advice-content').inert=false;$('#advice-page .sheet-footer').inert=false;$('[data-action="style-detail"]')?.focus(); }
+function closeStyleDetail(){ $('#style-detail')?.remove();styleBackground.forEach(({element,inert})=>element.inert=inert);styleBackground=[];styleDetailProduct=null;styleDetailFocus?.focus({preventScroll:true});styleDetailFocus=null; }
 function previewPhoto(id,index){
- const src=id==='attachment'?schemePhotoTarget().photos[index]:id==='product'?editing.image:(adviceView==='form'?noteDraft:editing.modificationGroups.find(n=>n.id===id))?.photos[index];if(!src)return;
+ const src=id==='attachment'?schemePhotoTarget().photos[index]:id==='product'?(styleDetailProduct||editing)?.image:(adviceView==='form'?noteDraft:editing.modificationGroups.find(n=>n.id===id))?.photos[index];if(!src)return;
  const preview=document.createElement('div');preview.id='photo-preview';preview.className='photo-preview';preview.setAttribute('role','dialog');preview.setAttribute('aria-label','说明照片预览');preview.innerHTML=`<button class="photo-preview-close" data-action="advice-preview-close" aria-label="关闭照片预览">×</button><img src="${src}" alt="说明照片放大预览">`;($('#style-detail')||(adviceView?$('#advice-page'):$('#sheet'))).append(preview);preview.querySelector('button').focus();
 }
 async function compressPhoto(file){
@@ -354,9 +368,13 @@ document.addEventListener('change',async e=>{
  $('#photo-status').textContent=error||(files.length>available?'最多保留 6 张照片':'照片已添加，保存建议后可继续添加其他意见');
 });
 
+function renderLinkedOrder(){const value=$('#linked-order-value');if(!value)return;value.textContent=linkedOrder?`${linkedOrder.id} · ${linkedOrder.customer?.company||linkedOrder.customer?.name||''}`:'请选择 ›';$('#unlink-order').hidden=!linkedOrder;}
+function orderChoices(){const rows=[{id:'DX20260928-001',customer:{name:'陈晓',company:'云织服饰'},created:'2026-09-28 10:30:00'},{id:'DX20260923-002',customer:{name:'林悦',company:'青禾设计工作室'},created:'2026-09-23 14:00:00'},{id:'DX20260917-003',customer:{name:'陈晓',company:'云织服饰'},created:'2026-09-17 09:20:00'}];try{const saved=JSON.parse(localStorage.getItem('cr-assisted-order-v1')||'null');if(saved?.id)rows.unshift(saved);}catch{}return [...new Map(rows.map(o=>[o.id,o])).values()];}
+function openOrderPicker(){simple('关联订单',`<div class="order-search"><input id="order-query" type="search" placeholder="搜索订单号、客户" aria-label="搜索订单号、客户"><div class="order-date-range"><label>开始日期<input id="order-from" type="date"></label><label>结束日期<input id="order-to" type="date"></label></div><p class="order-demo-label">演示订单及本机已提交订单</p></div><div id="order-options"></div>`);renderOrderOptions();$('#order-query').addEventListener('input',renderOrderOptions);$('#order-from').addEventListener('change',renderOrderOptions);$('#order-to').addEventListener('change',renderOrderOptions);}
+function renderOrderOptions(){const query=$('#order-query').value.trim().toLowerCase(),from=$('#order-from').value,to=$('#order-to').value;if(from&&to&&from>to){$('#order-options').innerHTML='<p class="helper">结束日期不能早于开始日期</p>';return;}const rows=orderChoices().filter(o=>{const date=String(o.created||'').slice(0,10);return `${o.id} ${o.customer?.name||''} ${o.customer?.company||''}`.toLowerCase().includes(query)&&(!from||date>=from)&&(!to||date<=to);});$('#order-options').innerHTML=rows.map(o=>`<button class="option-row order-option" data-action="select-linked-order" data-order-id="${escape(o.id)}"><div><strong>${escape(o.id)}</strong><p>${escape(o.customer?.company||'')} · ${escape(o.customer?.name||'')}</p><p>${escape(o.created||'')}</p></div><span>${linkedOrder?.id===o.id?'✓':'›'}</span></button>`).join('')||'<p class="helper">暂无匹配订单</p>';}
 function customer(){return {name:$('#name').value.trim(),company:$('#company').value.trim(),phone:$('#phone').value.trim()};}
 function fillCustomer(c){for(const key of ['name','company','phone'])$('#'+key).value=c[key]||'';}
-function save(){try{localStorage.setItem(config.storageKey,JSON.stringify({products,customer:customer()}));notify('已暂存到本机');}catch{notify('浏览器无法保存，请勿关闭当前页面');}}
+function save(){try{localStorage.setItem(config.storageKey,JSON.stringify({products,customer:customer(),linkedOrder}));notify('已暂存到本机');}catch{notify('浏览器无法保存，请勿关闭当前页面');}}
 function add(){simple('继续添加',config.products.map(p=>`<button class="option-row" data-action="pick-product" data-id="${p.id}"><img src="${p.image}" alt="${escape(p.name||p.id)}"><div><strong>${escape(p.name||p.id)}</strong><p>${p.id} · ${escape(p.category)}</p></div><span class="choice">${products.some(x=>x.id===p.id)?'已添加':'＋'}</span></button>`).join(''),'完成','close');}
 function recognition(type){
  if(type==='card')simple('名片识别','<p class="helper">演示模式：选择名片图片后，使用示例客户信息填入表单。</p><label class="file-label">选择名片图片<input id="card-file" type="file" accept="image/*"></label><p id="card-error" class="error"></p>','识别并填入','recognize-card');
@@ -387,6 +405,7 @@ document.addEventListener('click', e=>{
      editing.modificationGroups.push({id:crypto.randomUUID(),groupId:groupEditorId,category:'',tags:[],text:'',photos:[],...groupData});
    }
    delete schemeDrafts[groupEditorId];
+   editing.quantity=colorQuantityTotal(editing);
    returnToQuote();
    break;
  }
@@ -412,7 +431,9 @@ document.addEventListener('click', e=>{
  const field=$(`[data-action="color-position-open"][data-index="${index}"]`);
  field.value=button.dataset.value;field.querySelector('span').textContent=button.dataset.value;field.setAttribute('aria-label',`第${index+1}行色位 ${button.dataset.value}`);field.focus();break;
  }
- case 'colorway-row-add':captureColorway();colorwayDraft.colors.push({position:'A',material:'',code:''});renderColorway();break;
+ case 'color-minus':captureColorway();colorwayDraft.quantity=Math.max(1,colorwayDraft.quantity-1);renderColorway();break;
+ case 'color-plus':captureColorway();colorwayDraft.quantity+=1;renderColorway();break;
+ case 'colorway-row-add':captureColorway();const used=new Set(colorwayDraft.colors.map(c=>c.position).filter(Boolean));const next=Array.from({length:26},(_,i)=>String.fromCharCode(65+i)).find(letter=>!used.has(letter))||'A';colorwayDraft.colors.push({position:next,material:'',code:''});renderColorway();break;
  case 'colorway-row-delete':captureColorway();colorwayDraft.colors.splice(Number(button.dataset.index),1);renderColorway();break;
  case 'colorway-save':saveColorway();break;
  case 'colorway-cancel':colorwayDraft=null;openGroupEditor(groupEditorId);break;
@@ -428,10 +449,10 @@ document.addEventListener('click', e=>{
  case 'advice-note-close':cancelNote();break;
  case 'style-detail':openStyleDetail();break;
  case 'style-detail-close':closeStyleDetail();break;
- case 'style-detail-bag':closeStyleDetail();requestAdviceAction(returnToQuote);break;
+ case 'style-detail-bag':closeStyleDetail();break;
  case 'style-detail-image':previewPhoto('product',0);$('#photo-preview').style.zIndex='60';break;
  case 'style-share':notify('演示页面，分享功能待接入');break;
- case 'style-preview':openStyleDetail();break;
+ case 'style-preview':openStyleDetail(products[Number(button.dataset.index)]);break;
  case 'product-photo-preview':previewPhoto('attachment',Number(button.dataset.index));break;
  case 'product-photo-remove':schemePhotoTarget().photos.splice(Number(button.dataset.index),1);renderProductPhotos();break;
  case 'photo-menu':showPhotoMenu();break;
@@ -460,6 +481,9 @@ document.addEventListener('click', e=>{
  case 'requirement':{const r=button.dataset.value;editing.requirements=editing.requirements.includes(r)?editing.requirements.filter(x=>x!==r):[...editing.requirements,r];button.classList.toggle('selected',editing.requirements.includes(r));button.setAttribute('aria-pressed',editing.requirements.includes(r));break;}
  case 'plus':case 'minus':editing.quantity=Math.max(1,Math.min(999,editing.quantity+(action==='plus'?1:-1)));$('#quantity').value=editing.quantity;$('[data-action="minus"]').disabled=editing.quantity===1;$('[data-action="plus"]').disabled=editing.quantity===999;break;
  case 'confirm-edit':if(uploading){notify('照片处理中，请稍候');break;}{editing.remark=$('#remark').value.trim();products=products.map(p=>p.id===editing.id?editing:p);render();close();break;}
+ case 'link-order':openOrderPicker();break;
+ case 'unlink-order':linkedOrder=null;renderLinkedOrder();break;
+ case 'select-linked-order':{const selected=orderChoices().find(o=>o.id===button.dataset.orderId);if(selected){linkedOrder={id:selected.id,customer:selected.customer,created:selected.created};renderLinkedOrder();close();}break;}
  case 'customer':simple('选择客户','<p class="helper">演示客户</p>'+config.customers.map((c,i)=>`<button class="option-row" data-action="pick-customer" data-index="${i}"><div><strong>${c.name} · ${c.company}</strong><p>${c.phone}</p></div><i class="chevron" style="margin-left:auto"></i></button>`).join(''));break;
  case 'pick-customer':fillCustomer(config.customers[Number(button.dataset.index)]);close();notify('已填入客户信息');break;
  case 'card':case 'text':recognition(action);break;
@@ -468,18 +492,21 @@ document.addEventListener('click', e=>{
  case 'recognize-text':{const text=$('#recognition-text').value;const phone=text.match(/(?:\+86[- ]?)?1[3-9]\d{9}/)?.[0]||'';const name=text.match(/(?:姓名|联系人)\s*[:：]\s*([^\n，,]+)/)?.[1]?.trim()||'';const company=text.match(/(?:企业\/品牌|企业|品牌|公司)\s*[:：]\s*([^\n，,]+)/)?.[1]?.trim()||'';if(!name||!company||!phone){$('#text-error').textContent='请按示例填写姓名、企业和有效手机号码';break;}fillCustomer({name,company,phone});close();notify('已提取客户信息，请核对');break;}
  case 'save':save();break;
  case 'order':{if(!products.length){notify('请先添加选品');break;}const c=customer();const missing=['name','company','phone'].find(k=>!c[k]);if(missing){notify('请完善客户必填信息');$('#'+missing).focus();break;}if(!/^[+\d][\d\s()-]{5,19}$/.test(c.phone)){notify('请填写有效联系电话');$('#phone').focus();break;}simple(orderEditing?'确认修改':'确认下单',`<div class="success"><h2>${escape(c.name)} · ${escape(c.company)}</h2><p>共 ${products.length} 款 / ${products.reduce((n,p)=>n+p.quantity,0)} 件<br>联系电话：${escape(c.phone)}</p></div>${orderSuggestions()}<p class="helper">演示订单，仅在当前浏览器展示，不会提交真实订单。</p>`,'确认提交','submit-order');break;}
- case 'submit-order':{const number=orderEditing?.id||'DX'+new Date().toISOString().slice(0,10).replaceAll('-','')+'-'+Date.now().toString().slice(-5);try{localStorage.setItem('cr-assisted-order-v1',JSON.stringify({...orderEditing,id:number,created:orderEditing?.created||new Date().toLocaleString('sv-SE'),products,customer:customer()}));sessionStorage.removeItem('cr-assisted-order-edit');location.href='order-mobile.html';}catch{notify('订单保存失败，请重试');}break;}
+ case 'submit-order':{const number=orderEditing?.id||'DX'+new Date().toISOString().slice(0,10).replaceAll('-','')+'-'+Date.now().toString().slice(-5);try{localStorage.setItem('cr-assisted-order-v1',JSON.stringify({...orderEditing,id:number,created:orderEditing?.created||new Date().toLocaleString('sv-SE'),products,customer:customer(),linkedOrder}));sessionStorage.removeItem('cr-assisted-order-edit');location.href='order-mobile.html';}catch{notify('订单保存失败，请重试');}break;}
  case 'leave-order-edit':sessionStorage.removeItem('cr-assisted-order-edit');location.href='order-mobile.html';break;
  case 'back':case 'home':if(adviceView){adviceBack();break;}if(!$('#overlay').hidden){close();break;}if(orderEditing){simple('返回订单详情','<p class="helper">未保存的修改将不会保留。</p>','放弃修改并返回','leave-order-edit');break;}simple('代客选品','<p class="helper">为客户选择款式，填写洽谈信息与客户资料。</p>','继续选品','close');break;
  case 'more':if(adviceView){notify('完成修改内容后可使用更多操作');break;}simple('更多操作','<button class="menu-option" data-action="save">暂存当前选品</button><button class="menu-option" data-action="reset">恢复初始演示</button><p class="helper" style="margin-top:20px">手机端 HTML 演示 · 数据仅保存在本机</p>');break;
  case 'reset':simple('恢复初始演示','<p class="helper">清除本机暂存和客户信息，恢复截图中的两款选品。</p>','确认恢复','confirm-reset');break;
- case 'confirm-reset':products=fresh();fillCustomer({});try{localStorage.removeItem(config.storageKey);}catch{}render();close();notify('已恢复初始演示');break;
+ case 'confirm-reset':linkedOrder=null;renderLinkedOrder();products=fresh();fillCustomer({});try{localStorage.removeItem(config.storageKey);}catch{}render();close();notify('已恢复初始演示');break;
  }
 });
 $('#overlay').addEventListener('click',e=>{if(e.target===$('#overlay'))close();});
-document.addEventListener('keydown',e=>{if(adviceView){if(e.key==='Escape')adviceBack();return;}if($('#overlay').hidden)return;if(e.key==='Escape'){if($('#photo-preview')){$('#photo-preview').remove();return;}if($('#photo-menu')){closePhotoMenu();return;}close();}if(e.key==='Tab'){const controls=[...$('#sheet').querySelectorAll('button:not(:disabled),input,textarea,select,textarea')];if(!controls.length)return;const first=controls[0],last=controls.at(-1);if(e.shiftKey&&(document.activeElement===first||document.activeElement===$('#sheet'))){e.preventDefault();last.focus();}else if(!e.shiftKey&&(document.activeElement===last||document.activeElement===$('#sheet'))){e.preventDefault();first.focus();}}});
+document.addEventListener('keydown',e=>{if($('#style-detail')){if(e.key==='Escape'){e.preventDefault();if($('#photo-preview')){$('#photo-preview').remove();$('#style-detail .style-detail-hero').focus();}else closeStyleDetail();}return;}if(adviceView){if(e.key==='Escape')adviceBack();return;}if($('#overlay').hidden)return;if(e.key==='Escape'){if($('#photo-preview')){$('#photo-preview').remove();return;}if($('#photo-menu')){closePhotoMenu();return;}close();}if(e.key==='Tab'){const controls=[...$('#sheet').querySelectorAll('button:not(:disabled),input,textarea,select,textarea')];if(!controls.length)return;const first=controls[0],last=controls.at(-1);if(e.shiftKey&&(document.activeElement===first||document.activeElement===$('#sheet'))){e.preventDefault();last.focus();}else if(!e.shiftKey&&(document.activeElement===last||document.activeElement===$('#sheet'))){e.preventDefault();first.focus();}}});
 $('#customer-form').addEventListener('submit',e=>e.preventDefault());
-try{const draft=orderEditing||JSON.parse(localStorage.getItem(config.storageKey)||'null');if(draft&&Array.isArray(draft.products)){products=draft.products.map(p=>({...fresh().find(x=>x.id===(config.legacyStyleIds?.[p.id]||p.id)),...p,id:config.legacyStyleIds?.[p.id]||p.id})).filter(p=>config.products.some(x=>x.id===p.id)).map(p=>({...p,name:config.products.find(x=>x.id===p.id).name,category:config.products.find(x=>x.id===p.id).category,image:config.products.find(x=>x.id===p.id).image,quantity:Math.max(1,Math.min(999,Math.floor(Number(p.quantity)||1))),requirements:Array.isArray(p.requirements)?p.requirements.filter(r=>config.requirements.includes(r)):[],modificationGroups:normalizeSuggestions(p.modificationGroups??p.suggestions).map(n=>({...n,groupId:n.groupId||n.id}))}));fillCustomer(draft.customer||{});}}catch{}
+let loadedDraft=false;
+try{const draft=orderEditing||JSON.parse(localStorage.getItem(config.storageKey)||'null');if(draft&&Array.isArray(draft.products)){loadedDraft=true;products=draft.products.map(p=>({...fresh().find(x=>x.id===(config.legacyStyleIds?.[p.id]||p.id)),...p,id:config.legacyStyleIds?.[p.id]||p.id})).filter(p=>config.products.some(x=>x.id===p.id)).map(p=>({...p,name:config.products.find(x=>x.id===p.id).name,category:config.products.find(x=>x.id===p.id).category,image:config.products.find(x=>x.id===p.id).image,quantity:Math.max(1,Math.min(999,Math.floor(Number(p.quantity)||1))),requirements:Array.isArray(p.requirements)?p.requirements.filter(r=>config.requirements.includes(r)):[],modificationGroups:normalizeSuggestions(p.modificationGroups??p.suggestions).map(n=>({...n,groupId:n.groupId||n.id}))}));fillCustomer(draft.customer||{});linkedOrder=draft.linkedOrder||null;}}catch{}
+if(!orderEditing&&!loadedDraft){const initial=demoDraft();products=initial.products;fillCustomer(initial.customer);try{localStorage.setItem(config.storageKey,JSON.stringify(initial));}catch{} }
+renderLinkedOrder();
 if(orderEditing){$('.navbar h1').textContent='编辑订单';$('[data-action="order"]').textContent='保存订单';}
 render();
 })();

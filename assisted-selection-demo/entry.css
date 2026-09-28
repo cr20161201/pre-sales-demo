@@ -95,3 +95,13 @@
 .editor-footer-actions{display:flex;gap:12px;align-items:center}.editor-footer-actions .editor-delete-icon{display:grid;place-items:center;flex:0 0 48px;width:48px;height:48px;border:1px solid #eddcdd;border-radius:4px;color:#d95850;background:#fff}.editor-delete-icon svg{width:21px;height:21px;fill:none;stroke:currentColor;stroke-width:1.5}.editor-footer-actions .primary{min-width:0;flex:1;width:auto}.unified-editor-footer:has(.delete-warning:not([hidden])){height:auto;padding-bottom:28px}.unified-editor-footer .delete-warning{margin:0 0 10px}
 
 .tag-picker-panel .picker-cancel{height:44px;min-height:44px;flex-shrink:0;margin:16px 0 max(20px,env(safe-area-inset-bottom));border-top:1px solid #edf0f4;padding-top:10px;color:#666;font-size:15px}.order-advice .scheme-summary-card{width:100%;box-sizing:border-box}
+
+.section-heading,.group-editor-head{display:flex;align-items:center;justify-content:space-between;gap:12px}.section-heading .section-add,.group-editor-head .section-add{flex-shrink:0;color:#096bff;font-size:13px;min-height:32px;padding:4px 0}.colorway-quantity{font-size:12px;color:#8993a0;margin-left:auto}.color-empty{font-size:13px;color:#aaa;margin:4px 0 16px}.color-quantity-control{display:flex;justify-content:space-between;align-items:center;margin:0 0 18px;padding:12px 0;border-bottom:1px solid #edf0f4}.color-quantity-control .stepper{margin:0}.advice-note-footer{display:flex;gap:8px}.advice-note-footer .primary,.advice-note-footer .secondary{flex:1;width:auto}.advice-note-footer .secondary{border:1px solid #bed5f5;color:#096bff;background:#fff}
+
+.empty-hint{font-size:13px;color:#a3aab4;line-height:1.6;padding:4px 0 12px}
+/* Keep one separator between modification items and color settings. */
+.group-fields{border-top:0}
+
+.sheet-style-image{display:block;flex-shrink:0;padding:0}.sheet-style-image img{display:block}
+
+.linked-order-field{border-top:1px solid #eee;padding:16px 0}.linked-order-field>[data-action="link-order"]{display:flex;gap:16px;justify-content:space-between;width:100%;text-align:left;font-size:14px;line-height:1.7}.linked-order-field>[data-action="link-order"]>span:first-child{flex-shrink:0}#linked-order-value{color:#888;overflow-wrap:anywhere;text-align:right}#unlink-order{color:#1677ff;font-size:12px;margin-top:10px;float:right}.linked-order-field:after{content:'';display:block;clear:both}.order-search>input{width:100%;background:#f5f7fa;padding:12px;font-size:14px}.order-date-range{display:flex;gap:12px;margin:14px 0}.order-date-range label{min-width:0;flex:1;font-size:12px;color:#888}.order-date-range input{display:block;width:100%;padding:8px 0;font-size:13px}.order-option>div{flex:1}.order-demo-label{font-size:11px;color:#aaa;margin:12px 0}
