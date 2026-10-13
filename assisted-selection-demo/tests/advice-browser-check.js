@@ -7,7 +7,7 @@
  // Run from the initial main page in an isolated browser test session.
  action('edit');$('#price').value='36.50';$('#minimum').value='200';$('#remark').value='保留原版型';action('plus');action('requirement');action('advice-open');
  check($('#overlay').hidden&&!$('#advice-page').hidden&&$('#advice-text'),'Entry opens form directly');check(!$('.saved-advice'),'No empty-list detour');
- action('advice-save-next');check($('#advice-error').textContent.includes('类别'),'Category required');category('尺寸');action('advice-save');check($('#advice-error').textContent.includes('文字'),'Text required');
+ action('advice-save-next');check($('#advice-error').textContent.includes('类别'),'Category required');category('其他');action('advice-save');check($('#advice-error').textContent.includes('文字'),'Text required');
  $('#advice-text').value='袖长缩短 2cm，袖口保持原工艺。';click('[data-action="advice-tag"][data-value="袖长"]');check($('#advice-text').value.includes('2cm'),'Tag selection preserves text');
  const transfer=new DataTransfer();transfer.items.add(new File(['<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200"><rect width="200" height="200" fill="#00756d"/></svg>'],'note.svg',{type:'image/svg+xml'}));$('#advice-upload').files=transfer.files;$('#advice-upload').dispatchEvent(new Event('change',{bubbles:true}));
  for(let i=0;i<100 && $('[data-action="advice-save"]').disabled;i++)await new Promise(r=>setTimeout(r,30));

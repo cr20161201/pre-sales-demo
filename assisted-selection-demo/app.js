@@ -2,26 +2,44 @@
 'use strict';
 const config = window.DEMO_CONFIG, $ = s => document.querySelector(s);
 let adviceFields={category:{expanded:true},tag:{expanded:false},categories:{}};
-try {
-  const savedAdviceConfig = JSON.parse(localStorage.getItem(config.adviceConfigKey) || 'null');
-  if(savedAdviceConfig?.fields)adviceFields={...adviceFields,categories:savedAdviceConfig.fields,...savedAdviceConfig.fields};
-  if (savedAdviceConfig?.categories?.length) {
-    config.adviceCategories = Object.fromEntries(savedAdviceConfig.categories.filter(c => c.enabled !== false && c.name && Array.isArray(c.tags)).map(c => [c.name, c.tags.filter(t => t.enabled !== false).map(t => t.name).filter(Boolean)]));
-  }
-} catch {}
 const escape = value => String(value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const schemeCount=p=>new Set((p.modificationGroups||[]).map(n=>n.groupId||n.id)).size;
 const colorQuantity=c=>Math.max(1,Math.floor(Number(c?.quantity)||1));
-const colorQuantityTotal=p=>{const groups=new Map();for(const n of (p.modificationGroups||[])){const id=n.groupId||n.id;if(!groups.has(id))groups.set(id,n);}const total=[...groups.values()].flatMap(n=>normalizeColorways(n)).reduce((sum,c)=>sum+colorQuantity(c),0);return total||Math.max(1,Math.floor(Number(p.quantity)||1));};
+const colorQuantityTotal=p=>{const groups=new Map();for(const n of (p.modificationGroups||[])){const id=n.groupId||n.id;if(!groups.has(id))groups.set(id,n);}const total=[...groups.values()].flatMap(n=>normalizeColorways(n)).reduce((sum,c)=>sum+colorQuantity(c),0);return total;};
 const isModification=n=>Boolean(n.category||n.text||n.tags?.length||n.photos?.length);
-const validPhoto=p=>typeof p==='string'&&(/^data:image\/(jpeg|png|webp);base64,/.test(p)||/^assets\/(?:[a-zA-Z0-9_-]+\/)*[a-zA-Z0-9_.-]+\.(?:svg|png|jpe?g|webp)$/i.test(p));
 const fresh = () => config.products.map(p => ({...p, quantity:1, price:'', minimum:'', currency:'CNY', requirements:[], remark:'', modificationGroups:[]}));
 let linkedOrder=null;
-let orderEditing=null;try{if(new URLSearchParams(location.search).has('editOrder'))orderEditing=JSON.parse(sessionStorage.getItem('cr-assisted-order-edit')||'null');}catch{}
-const demoDraft=()=>({customer:{name:'陈晓',company:'云织服饰',phone:'13800138000'},products:[{...config.products[0],quantity:3,price:'',minimum:'',currency:'CNY',requirements:['报价单'],remark:'请确认修改后提供样衣。',schemePhotos:{},modificationGroups:[{id:'demo-item-1',groupId:'demo-scheme-1',category:'工艺',tags:['领口'],text:'领口增加一道加固工艺，走线与大身同色。',photos:[],colorways:[{id:'demo-color-1',quantity:2,colors:[{position:'A',material:'棉',code:'19-5513 TCX'},{position:'B',material:'棉',code:'11-0601 TCX'}]},{id:'demo-color-2',quantity:1,colors:[{position:'A',material:'棉麻',code:'13-0905 TCX'}]}],styleDescription:'日常通勤款，保留原版型，优化领口细节。',needleType:'12针',season:'春秋',size:'M / L'},{id:'demo-item-2',groupId:'demo-scheme-1',category:'尺寸',tags:['袖长'],text:'袖长缩短 2cm，袖口保持原工艺。',photos:[],colorways:[],styleDescription:'',needleType:'',season:'',size:''}]}]});
+const demoDraft=()=>window.createSelectionDemo();
 let products = fresh(), editing = null, lastFocus = null, toastTimer, styleDetailFocus = null, styleDetailProduct=null, styleBackground=[];
-let adviceView = null, groupEditorId = null, noteDraft = null, noteBaseline = '', adviceFilter = '全部', pendingAdviceAction = null, pickerTags = [], popupFocus = null, uploading = false, quoteScroll = 0, schemeDrafts = {};
+let adviceView = null, groupEditorId = null, noteDraft = null, noteBaseline = '', adviceFilter = '全部', pendingAdviceAction = null, pickerTags = [], popupFocus = null, uploading = false, quoteScroll = 0, schemeDrafts = {}, colorwayDetailsReturn = false, colorDetailsScroll = 0, colorGroupScroll = 0;
 let colorwayDraft=null, colorPositionIndex=null, schemeSnapshot=null;
+let colorBaseline='',quoteBaseline='';
+const schemeKeys=['colorways','colors','styleDescription','needleType','season','size','schemeRemark'];
+const schemeData=n=>Object.fromEntries(schemeKeys.map(k=>[k,structuredClone(n?.[k]??(k==='colorways'||k==='colors'?[]:''))]));
+const lettersAt=index=>{let out='';for(let n=index+1;n>0;n=Math.floor((n-1)/26))out=String.fromCharCode(65+(n-1)%26)+out;return out;};
+const nextPosition=colors=>{const used=new Set(colors.map(c=>c.position));let i=0;while(used.has(lettersAt(i)))i++;return lettersAt(i);};
+function firstScheme(){let n=editing.modificationGroups.find(n=>(n.groupId||n.id)===groupEditorId);if(!n){n={id:crypto.randomUUID(),groupId:groupEditorId,category:'',tags:[],text:'',photos:[],...schemeData(null)};editing.modificationGroups.push(n);}return n;}
+function markSaved(full=false){
+ const before=colorQuantityTotal(schemeSnapshot||editing),after=colorQuantityTotal(editing);
+ if(before!==after){editing.quantity=after;const baseline=JSON.parse(quoteBaseline||'{}');baseline.quantity=after;quoteBaseline=JSON.stringify(baseline);}
+ if(full||!schemeSnapshot)schemeSnapshot=structuredClone(editing);
+ else {schemeSnapshot.modificationGroups=structuredClone(editing.modificationGroups);schemeSnapshot.quantity=editing.quantity;}
+ products=products.map(p=>p.id===editing.id?{...p,modificationGroups:structuredClone(schemeSnapshot.modificationGroups),schemePhotos:structuredClone(schemeSnapshot.schemePhotos||{}),quantity:editing.quantity}:p);
+ render();
+}
+function removeModification(id){
+ const item=editing.modificationGroups.find(n=>n.id===id);if(!item)return;
+ const group=item.groupId||item.id,first=editing.modificationGroups.find(n=>(n.groupId||n.id)===group),data=schemeData(first);
+ editing.modificationGroups=editing.modificationGroups.filter(n=>n.id!==id);
+ let next=editing.modificationGroups.find(n=>(n.groupId||n.id)===group);
+ if(next)Object.assign(next,data);
+ else if(data.colorways.length||data.styleDescription||data.needleType||data.season||data.size||data.schemeRemark||editing.schemePhotos?.[group]?.length)editing.modificationGroups.push({id:crypto.randomUUID(),groupId:group,category:'',tags:[],text:'',photos:[],...data});
+ markSaved();
+}
+function commitSchemePart(key,value){firstScheme()[key]=structuredClone(value);if(schemeDrafts[groupEditorId])schemeDrafts[groupEditorId][key]=structuredClone(value);markSaved();}
+function groupDirty(){captureNote();const saved=schemeSnapshot?.modificationGroups.find(n=>(n.groupId||n.id)===groupEditorId);return JSON.stringify(schemeData(noteDraft))!==JSON.stringify(schemeData(saved))||JSON.stringify(editing.schemePhotos?.[groupEditorId]||[])!==JSON.stringify(schemeSnapshot?.schemePhotos?.[groupEditorId]||[]);}
+function confirmDiscard(changed){return !changed||confirm('有未保存的修改，退出后将丢弃。确定退出？');}
+const quoteState=()=>JSON.stringify({remark:editing?.remark||'',requirements:editing?.requirements||[],quantity:editing?.quantity});
 const expandedModifications=new Set();
 const trash = '<svg viewBox="0 0 24 24"><path d="M3 5h18M9 2h6M5 5v17h14V5M9 9v9M15 9v9"/></svg>';
 function notify(message) { $('#toast').textContent = message; $('#toast').hidden = false; clearTimeout(toastTimer); toastTimer = setTimeout(() => $('#toast').hidden = true, 2400); }
@@ -33,18 +51,17 @@ function footer(text,action){return `<div class="sheet-footer"><button class="pr
 function show(content, simple=false, label='编辑选品') {
   lastFocus = document.activeElement; $('#sheet').className = 'sheet'+(simple?' simple-sheet':''); $('#sheet').setAttribute('aria-label',label); $('#sheet').innerHTML=content; $('#overlay').hidden=false; $('.main').inert=true; $('.footer').inert=true; $('#sheet').focus();
 }
-function close(){ $('#overlay').hidden=true; $('.main').inert=false; $('.footer').inert=false; editing=null; if(lastFocus?.isConnected)lastFocus.focus(); }
+function close(force=false){ if(editing&&!force){if($('#remark'))captureQuote();if(!confirmDiscard(quoteState()!==quoteBaseline))return;} $('#overlay').hidden=true; $('.main').inert=false; $('.footer').inert=false; editing=null; if(lastFocus?.isConnected)lastFocus.focus(); }
 function simple(title,body,button,action){show(`<div class="sheet-content"><div class="simple-heading"><h2>${title}</h2><button class="close" aria-label="关闭" data-action="close">×</button></div>${body}</div>${button?footer(button,action):'<div class="sheet-footer"><div class="home-indicator"></div></div>'}`,true,title);}
 function edit(id, resume=false) {
- try{adviceFields.categories=JSON.parse(localStorage.getItem(config.adviceConfigKey)||'null')?.fields||{};}catch{}
- if(!resume){editing=structuredClone(products.find(p=>p.id===id));schemeDrafts={};}
+ if(!resume){editing=structuredClone(products.find(p=>p.id===id));schemeDrafts={};schemeSnapshot=null;}
  editing.modificationGroups ||= [];
  editing.photos ||= [];
  editing.schemePhotos ||= {};
  editing.requirements ||= [];
  const p=editing;
- p.quantity=colorQuantityTotal(p);
- show(`<div class="sheet-content"><div class="sheet-product"><button class="sheet-style-image" data-action="style-detail" aria-label="查看${escape(p.name||p.id)}款式信息"><img src="${p.image}" alt="${escape(p.name||p.id)}"></button><h2>${p.id}</h2><button class="close" data-action="close" aria-label="关闭">×</button></div>${groupOverview(p)}<label class="field quote-field remark"><span>备注</span><input id="remark" placeholder="请输入备注" value="${escape(p.remark)}"></label><section class="requirements"><h2>额外需求</h2><div class="requirement-grid">${config.requirements.map(r=>`<button data-action="requirement" data-value="${escape(r)}" class="${p.requirements.includes(r)?'selected':''}" aria-pressed="${p.requirements.includes(r)}">${escape(r)}</button>`).join('')}</div></section><div class="quantity"><h2>数量</h2><div class="stepper"><button aria-label="减少数量" data-action="minus" ${p.quantity===1?'disabled':''}>−</button><output id="quantity">${p.quantity}</output><button aria-label="增加数量" data-action="plus">+</button><span>件</span></div></div></div>${footer('确定','confirm-edit')}`);
+ if(!resume)quoteBaseline=quoteState();
+ show(`<div class="sheet-content"><div class="sheet-product"><button class="sheet-style-image" data-action="style-detail" aria-label="查看${escape(p.name||p.id)}款式信息"><img src="${p.image}" alt="${escape(p.name||p.id)}"></button><h2>${p.id}</h2><button class="close" data-action="close" aria-label="关闭">×</button></div>${groupOverview(p)}<label class="field quote-field remark"><span>备注</span><input id="remark" placeholder="请输入备注" value="${escape(p.remark)}"></label><section class="requirements"><h2>额外需求</h2><div class="requirement-grid">${config.requirements.map(r=>`<button data-action="requirement" data-value="${escape(r)}" class="${p.requirements.includes(r)?'selected':''}" aria-pressed="${p.requirements.includes(r)}">${escape(r)}</button>`).join('')}</div></section><div class="quantity"><h2>数量</h2><div class="stepper"><button aria-label="减少数量" data-action="minus" ${p.quantity===0?'disabled':''}>−</button><input id="quantity" aria-label="样衣数量" type="number" min="0" step="1" value="${p.quantity}"><button aria-label="增加数量" data-action="plus">+</button><span>件</span></div></div></div>${footer('确定','confirm-edit')}`);
  renderProductPhotos();
 }
 function groupOverview(product,readOnly=false){
@@ -73,10 +90,6 @@ function renderProductPhotos(){
  $('#product-photo-count').textContent=target.photos.length+'/6';
  $('#product-photos').innerHTML=target.photos.map((src,i)=>`<div class="advice-photo"><button data-action="product-photo-preview" data-index="${i}" aria-label="预览第${i+1}张图片"><img src="${escape(src)}" alt="方案图片"></button><button class="remove-photo" data-action="product-photo-remove" data-index="${i}" aria-label="删除第${i+1}张图片">×</button></div>`).join('')+(target.photos.length<6?`<button class="add-photo" data-action="photo-menu" aria-label="新增照片" ${uploading?'disabled':''}>＋</button>`:'');
 }
-function normalizeSuggestions(value) {
- if(!Array.isArray(value))return [];
- return value.filter(n=>n && typeof n.text==='string' && typeof n.category==='string').map(n=>({id:String(n.id||crypto.randomUUID()),groupId:String(n.groupId||n.id||crypto.randomUUID()),category:n.category,tags:Array.isArray(n.tags)?n.tags.filter(t=>typeof t==='string'):[],text:n.text,colorways:normalizeColorways(n),colors:Array.isArray(n.colors)?n.colors.map((c,i)=>typeof c==='string'?{position:String.fromCharCode(65+i),material:'',code:c}:{position:String(c.position||''),material:String(c.material||''),code:String(c.code||'')}).filter(c=>c.position||c.material||c.code):[],styleDescription:String(n.styleDescription||''),needleType:String(n.needleType||''),season:String(n.season||''),size:String(n.size||''),photos:Array.isArray(n.photos)?n.photos.filter(validPhoto).slice(0,6):[]}));
-}
 function orderSuggestions(){
  const rows=products.filter(p=>schemeCount(p));
  if(!rows.length)return '';
@@ -96,19 +109,20 @@ function modificationCard(n,index){
 function modificationList(items,id){
  items=items.filter(isModification);
  const expanded=expandedModifications.has(id);
- return `<div id="modification-list">${items.length?(expanded?items:items.slice(0,3)).map(modificationCard).join(''):'<p class="empty-hint">暂无修改内容</p>'}${items.length>3?`<button class="modification-toggle" data-action="modification-toggle" aria-expanded="${expanded}">${expanded?'收起':`查看全部（${items.length}条）`}</button>`:''}</div>`;
+ return `<div id="modification-list">${items.length?(expanded?items:items.slice(0,2)).map(modificationCard).join(''):'<p class="empty-hint">未填写</p>'}${items.length>2?`<button class="modification-toggle" data-action="modification-toggle" aria-expanded="${expanded}">${expanded?'收起':`展开全部（${items.length}条）`}</button>`:''}</div>`;
 }
 function openGroupEditor(groupId){
  if(!adviceView)schemeSnapshot=structuredClone(editing);
  const groups=[...new Map(editing.modificationGroups.map(n=>[n.groupId||n.id,[]])).keys()];
- const id=groupId||crypto.randomUUID(); groupEditorId=id; const items=editing.modificationGroups.filter(n=>(n.groupId||n.id)===id); const first=items[0]||{id:crypto.randomUUID(),groupId:id,colors:[],styleDescription:'',needleType:'',season:'',size:''}; Object.assign(first,schemeDrafts[id]||{}); first.colorways=normalizeColorways(first); noteDraft=structuredClone(first); adviceView='group';
- showAdvice(`方案${groups.indexOf(id)+1||groups.length+1}`,`<div class="group-editor"><header class="group-editor-head"><h2 class="scheme-section-title">修改内容</h2><button class="section-add" data-action="advice-add-item" data-group="${escape(id)}">新增修改项</button></header>${modificationList(items,id)}${groupFields(first)}<section class="product-photo-section"><h2>方案图片 <small id="product-photo-count"></small></h2><div id="product-photos" class="advice-photos"></div><input id="product-camera" class="visually-hidden" type="file" accept="image/*" capture="environment"><input id="product-upload" class="visually-hidden" type="file" accept="image/*" multiple><p id="product-photo-status" class="photo-helper" role="status"></p></section></div>`,'完成','group-save');
+ const id=groupId||crypto.randomUUID(); groupEditorId=id; const items=editing.modificationGroups.filter(n=>(n.groupId||n.id)===id); const first=items[0]||{id:crypto.randomUUID(),groupId:id,colors:[],styleDescription:'',needleType:'',season:'',size:''}; const savedFirst=structuredClone(first); Object.assign(savedFirst,schemeDrafts[id]||{}); savedFirst.colorways=normalizeColorways(savedFirst); noteDraft=structuredClone(savedFirst); adviceView='group';
+ showAdvice(`方案${groups.indexOf(id)+1||groups.length+1}`,`<div class="group-editor"><header class="group-editor-head"><h2 class="scheme-section-title">修改内容</h2><button class="section-add" data-action="advice-add-item" data-group="${escape(id)}">新增修改</button></header>${modificationList(items,id)}${groupFields(noteDraft)}<section class="product-photo-section"><h2>方案图片 <small id="product-photo-count"></small></h2><div id="product-photos" class="advice-photos"></div><input id="product-camera" class="visually-hidden" type="file" accept="image/*" capture="environment"><input id="product-upload" class="visually-hidden" type="file" accept="image/*" multiple><p id="product-photo-status" class="photo-helper" role="status"></p></section></div>`,'完成','group-save');
  if(schemeSnapshot?.modificationGroups.some(n=>(n.groupId||n.id)===id))addDeleteFooter('方案','scheme-delete-confirm',id);
  renderProductPhotos();
+ colorwayDetailsReturn=false;
 }
 function openGroupList(){
  const groups=[...new Map(editing.modificationGroups.map(n=>[n.groupId||n.id,[]])).keys()].map(id=>({id,items:editing.modificationGroups.filter(n=>(n.groupId||n.id)===id)}));
- showAdvice('修改内容',`<div class="group-list-page"><div class="group-list-intro section-heading"><h2>修改方案</h2><button class="section-add" data-action="advice-add-group">新增方案</button></div>${groups.map((g,i)=>`<article class="outer-group-card"><header><strong>方案${i+1}</strong><span>${g.items.length}条修改项</span><button class="section-add" data-action="advice-add-item" data-group="${escape(g.id)}">新增修改项</button><button data-action="group-delete" data-group="${escape(g.id)}">删除方案</button></header><div>${g.items.slice(0,2).map((n,j)=>`<button class="outer-group-item" data-action="group-open" data-id="${escape(n.id)}"><span>修改项${j+1} · ${escape(n.category||'未选类别')}</span><small>${escape(n.text||'未填写修改内容')}</small><i class="chevron"></i></button>`).join('')}${g.items.length>2?`<small class="group-more">还有 ${g.items.length-2} 条修改项</small>`:''}</div></article>`).join('')||'<div class="group-empty">暂无修改方案</div>'}</div>`,'完成','advice-finish');
+ showAdvice('修改内容',`<div class="group-list-page"><div class="group-list-intro section-heading"><h2>修改方案</h2><button class="section-add" data-action="advice-add-group">新增方案</button></div>${groups.map((g,i)=>`<article class="outer-group-card"><header><strong>方案${i+1}</strong><span>${g.items.length}条修改项</span><button class="section-add" data-action="advice-add-item" data-group="${escape(g.id)}">新增修改</button><button data-action="group-delete" data-group="${escape(g.id)}">删除方案</button></header><div>${g.items.slice(0,2).map((n,j)=>`<button class="outer-group-item" data-action="group-open" data-id="${escape(n.id)}"><span>修改项${j+1} · ${escape(n.category||'未选类别')}</span><small>${escape(n.text||'未填写修改内容')}</small><i class="chevron"></i></button>`).join('')}${g.items.length>2?`<small class="group-more">还有 ${g.items.length-2} 条修改项</small>`:''}</div></article>`).join('')||'<div class="group-empty">暂无修改方案</div>'}</div>`,'完成','advice-finish');
 }
 function addDeleteFooter(label,action,id){
  const host=$('#advice-page > .sheet-footer');
@@ -131,8 +145,8 @@ function returnToQuote(){
 function adviceSummary(){
  const notes=editing.modificationGroups, groups=[...new Map(notes.map(n=>[n.groupId||n.id,[]])).keys()].map(id=>({id,items:notes.filter(n=>(n.groupId||n.id)===id)}));
  const filtered=groups.filter(g=>adviceFilter==='全部'||g.items.some(n=>n.category===adviceFilter));
- if(!groups.length)return '<section class="saved-advice"><div class="saved-advice-heading">已录入 0 个方案</div><p class="saved-advice-empty">暂无修改内容</p><button class="add-group" data-action="advice-add-group">＋ 新增方案</button></section>';
- return `<section class="saved-advice"><div class="saved-advice-heading">已录入 ${groups.length} 个方案<select aria-label="筛选已录入方案" id="advice-summary-filter">${['全部',...Object.keys(config.adviceCategories)].map(c=>`<option ${c===adviceFilter?'selected':''}>${c}</option>`).join('')}</select></div><div class="saved-advice-rows">${filtered.map((g,index)=>`<article class="saved-group-card"><div class="group-card-heading"><b>方案${groups.indexOf(g)+1}</b><span>${g.items.length} 条修改项</span></div>${g.items.map((n,j)=>`<button class="saved-advice-row ${n.id===noteDraft.id?'active':''}" data-action="advice-edit" data-id="${escape(n.id)}"><span class="saved-record"><span class="saved-record-label"><b>修改项 ${j+1}</b><span class="saved-category">${escape(n.category||'未选类别')}</span><span class="saved-tags"> · ${n.tags.length?n.tags.map(escape).join('、'):'未选标签'}</span></span><span class="saved-text">${escape(n.text||'未填写修改内容')}</span></span>${n.photos.length?`<small>${n.photos.length}图</small>`:''}<i class="chevron"></i></button>`).join('')}<p class="group-item-count">方案资料：${g.items[0].fabricSeries||g.items[0].colors?.length?'已填写':'待填写'}</p><button class="group-add-item" data-action="advice-add-item" data-group="${escape(g.id)}">＋ 新增修改项</button></article>`).join('')}</div><button class="add-group" data-action="advice-add-group">＋ 新增方案</button></section>`;
+ if(!groups.length)return '<section class="saved-advice"><div class="saved-advice-heading">已录入 0 个方案</div><p class="saved-advice-empty">未填写</p><button class="add-group" data-action="advice-add-group">＋ 新增方案</button></section>';
+ return `<section class="saved-advice"><div class="saved-advice-heading">已录入 ${groups.length} 个方案<select aria-label="筛选已录入方案" id="advice-summary-filter">${['全部',...Object.keys(config.adviceCategories)].map(c=>`<option ${c===adviceFilter?'selected':''}>${c}</option>`).join('')}</select></div><div class="saved-advice-rows">${filtered.map((g,index)=>`<article class="saved-group-card"><div class="group-card-heading"><b>方案${groups.indexOf(g)+1}</b><span>${g.items.length} 条修改项</span></div>${g.items.map((n,j)=>`<button class="saved-advice-row ${n.id===noteDraft.id?'active':''}" data-action="advice-edit" data-id="${escape(n.id)}"><span class="saved-record"><span class="saved-record-label"><b>修改项 ${j+1}</b><span class="saved-category">${escape(n.category||'未选类别')}</span><span class="saved-tags"> · ${n.tags.length?n.tags.map(escape).join('、'):'未选标签'}</span></span><span class="saved-text">${escape(n.text||'未填写修改内容')}</span></span>${n.photos.length?`<small>${n.photos.length}图</small>`:''}<i class="chevron"></i></button>`).join('')}<p class="group-item-count">方案资料：${g.items[0].fabricSeries||g.items[0].colors?.length?'已填写':'待填写'}</p><button class="group-add-item" data-action="advice-add-item" data-group="${escape(g.id)}">＋ 新增修改</button></article>`).join('')}</div><button class="add-group" data-action="advice-add-group">＋ 新增方案</button></section>`;
 }
 function requestAdviceAction(action){
  if(uploading){notify('照片处理中，请稍候');return;}
@@ -163,15 +177,15 @@ function showDiscardDialog(returning){
 let voiceSession=null;
 function openVoice(){
  captureNote();const Recognition=window.SpeechRecognition||window.webkitSpeechRecognition;
- mountPopup(`<section class="voice-panel" role="dialog" aria-modal="true" aria-labelledby="voice-title"><header><h2 id="voice-title">${escape(adviceTitle())}</h2><button data-action="popup-close" aria-label="关闭语音输入">×</button></header><textarea id="voice-text" maxlength="1000" aria-label="语音识别文字" placeholder="识别的文字将显示在这里，可直接修改">${escape(noteDraft.text)}</textarea><p id="voice-status" role="status">按住说话，松手停止，上滑取消</p><footer><button data-action="voice-clear">清空</button><button id="voice-hold" aria-label="按住说话"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><rect x="9" y="2" width="6" height="13" rx="3"/><path d="M6 10v2a6 6 0 0 0 12 0v-2M12 18v4M8 22h8"/></svg><small>按住说话</small></button><button data-action="voice-confirm">确认</button></footer></section>`,'bottom');
+ mountPopup(`<section class="voice-panel" role="dialog" aria-modal="true" aria-labelledby="voice-title"><header><h2 id="voice-title">${escape(adviceTitle())}</h2><button data-action="popup-close" aria-label="关闭语音输入">×</button></header><textarea id="voice-text" maxlength="100" aria-label="语音识别文字" placeholder="识别的文字将显示在这里，可直接修改">${escape(noteDraft.text)}</textarea><p id="voice-status" role="status">按住说话，松手停止，上滑取消</p><footer><button data-action="voice-clear">清空</button><button id="voice-hold" aria-label="按住说话"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><rect x="9" y="2" width="6" height="13" rx="3"/><path d="M6 10v2a6 6 0 0 0 12 0v-2M12 18v4M8 22h8"/></svg><small>按住说话</small></button><button data-action="voice-confirm">确认</button></footer></section>`,'bottom');
  const session=voiceSession={active:false,cancelled:false,recognition:null},hold=$('#voice-hold');let startY=0,base='',cancel=false;
  const busy=value=>{session.active=value;$('#voice-text').readOnly=value;$('[data-action="voice-confirm"]').disabled=value;$('[data-action="voice-clear"]').disabled=value;hold.classList.toggle('recording',value);};
  function start(){if(session.active||voiceSession!==session)return;cancel=false;base=$('#voice-text').value;if(!Recognition){busy(true);$('#voice-status').textContent='正在听… 松手停止，上滑取消';session.demo=true;return;}const rec=new Recognition();session.recognition=rec;rec.lang='zh-CN';rec.continuous=true;rec.interimResults=true;busy(true);$('#voice-status').textContent='正在听… 松手停止，上滑取消';
- rec.onresult=e=>{if(session.cancelled||cancel||voiceSession!==session)return;let transcript='';for(let i=0;i<e.results.length;i++)transcript+=e.results[i][0].transcript;$('#voice-text').value=(base+(base&&transcript?'\n':'')+transcript).slice(0,1000);};
+ rec.onresult=e=>{if(session.cancelled||cancel||voiceSession!==session)return;let transcript='';for(let i=0;i<e.results.length;i++)transcript+=e.results[i][0].transcript;$('#voice-text').value=(base+(base&&transcript?'\n':'')+transcript).slice(0,100);};
  rec.onerror=e=>{if(voiceSession!==session||session.cancelled)return;session.error=true;$('#voice-status').textContent=e.error==='not-allowed'?'麦克风权限未开启，请允许后重试':e.error==='no-speech'?'未识别到语音，请重试':'语音识别不可用，请重试或直接输入';};
  rec.onend=()=>{if(voiceSession!==session||session.cancelled)return;busy(false);if(!session.error)$('#voice-status').textContent=cancel?'已取消本次录入':'可继续说话，或确认填入';session.error=false;};
  try{rec.start();}catch{busy(false);$('#voice-status').textContent='无法启动语音识别，请重试或直接输入';}}
- function stop(abort=false){if(!session.active)return;cancel=cancel||abort;if(session.demo){if(!cancel){$('#voice-text').value=(base+(base?'\n':'')+'请调整'+(noteDraft.tags[0]||noteDraft.category||'这处细节')+'，完成后重新确认。').slice(0,1000);}else $('#voice-text').value=base;busy(false);$('#voice-status').textContent=cancel?'已取消本次录入':'演示识别文字，可修改后确认';return;}if(cancel){$('#voice-text').value=base;session.recognition.abort();}else session.recognition.stop();}
+ function stop(abort=false){if(!session.active)return;cancel=cancel||abort;if(session.demo){if(!cancel){$('#voice-text').value=(base+(base?'\n':'')+'请调整'+(noteDraft.tags[0]||noteDraft.category||'这处细节')+'，完成后重新确认。').slice(0,100);}else $('#voice-text').value=base;busy(false);$('#voice-status').textContent=cancel?'已取消本次录入':'演示识别文字，可修改后确认';return;}if(cancel){$('#voice-text').value=base;session.recognition.abort();}else session.recognition.stop();}
  hold.onpointerdown=e=>{e.preventDefault();startY=e.clientY;hold.setPointerCapture(e.pointerId);start();};
  hold.onpointermove=e=>{if(session.active){cancel=startY-e.clientY>60;$('#voice-status').textContent=cancel?'松手取消本次录入':'正在听… 松手停止，上滑取消';}};
  hold.onpointerup=()=>stop();hold.onpointercancel=()=>stop(true);
@@ -193,7 +207,7 @@ function commitTags(){
 }
 function openNote(id,groupId){
  if(uploading){notify('照片处理中，请稍候');return;}
- if(adviceView==='group'){captureNote();schemeDrafts[groupEditorId]=Object.fromEntries(['colorways','colors','styleDescription','needleType','season','size'].map(k=>[k,structuredClone(noteDraft[k]??'')]));}
+ if(adviceView==='group'){captureNote();schemeDrafts[groupEditorId]=schemeData(noteDraft);}
  if(!adviceView)captureQuote();
  const existing=id&&editing.modificationGroups.find(n=>n.id===id);
  groupId=existing?.groupId||groupId||groupEditorId||crypto.randomUUID();
@@ -202,7 +216,7 @@ function openNote(id,groupId){
  noteDraft.category ||= '工艺';
  noteBaseline=JSON.stringify(noteDraft);pendingAdviceAction=null;adviceView='form';renderNote();
 }
-function captureNote(){if($('#advice-text'))noteDraft.text=$('#advice-text').value;for(const [key,id] of Object.entries({styleDescription:'style-description',needleType:'needle-type',season:'season',size:'size-code'})){const input=$('#'+id);if(input)noteDraft[key]=input.value;}if($('#color-table-body'))noteDraft.colors=[...$('#color-table-body').querySelectorAll('tr')].map(row=>({position:row.querySelector('.color-position').value,material:row.querySelector('.color-material').value.trim(),code:row.querySelector('.color-code').value.trim()})).filter(color=>color.position||color.material||color.code);}
+function captureNote(){if($('#advice-text'))noteDraft.text=$('#advice-text').value;for(const [key,id] of Object.entries({styleDescription:'style-description',needleType:'needle-type',season:'season',size:'size-code',schemeRemark:'scheme-remark'})){const input=$('#'+id);if(input)noteDraft[key]=input.value;}if($('#color-table-body'))noteDraft.colors=[...$('#color-table-body').querySelectorAll('tr')].map(row=>({position:row.querySelector('.color-position').value,material:row.querySelector('.color-material').value.trim(),code:row.querySelector('.color-code').value.trim()})).filter(color=>color.position||color.material||color.code);}
 function normalizeColorways(n){
  const rows=colors=>(Array.isArray(colors)?colors:[]).map((c,i)=>typeof c==='string'?{position:String.fromCharCode(65+i),material:'',code:c}:{position:String(c.position||''),material:String(c.material||''),code:String(c.code||'')});
  if(Array.isArray(n.colorways))return n.colorways.map(c=>({id:String(c.id||crypto.randomUUID()),quantity:colorQuantity(c),colors:rows(c.colors)}));
@@ -210,25 +224,35 @@ function normalizeColorways(n){
 }
 function rememberScheme(){
  captureNote();
- schemeDrafts[groupEditorId]=Object.fromEntries(['colorways','colors','styleDescription','needleType','season','size'].map(k=>[k,structuredClone(noteDraft[k]??'')]));
+ schemeDrafts[groupEditorId]=schemeData(noteDraft);
 }
 function colorTable(colors,editable=false){
- const letters=Array.from({length:26},(_,i)=>String.fromCharCode(65+i));
- return `<table class="color-table"><thead><tr><th>色位</th><th>原料</th><th>颜色编码</th>${editable?'<th></th>':''}</tr></thead><tbody ${editable?'id="colorway-rows"':''}>${colors.map((c,i)=>`<tr>${editable?`<td><button class="color-position" value="${escape(c.position||'A')}" data-action="color-position-open" data-index="${i}" aria-label="第${i+1}行色位 ${escape(c.position||'A')}" aria-haspopup="dialog"><span>${escape(c.position||'A')}</span><i class="chevron"></i></button></td><td><input class="color-material" aria-label="第${i+1}行原料" value="${escape(c.material)}" placeholder="请输入原料"></td><td><input class="color-code" aria-label="第${i+1}行颜色编码" value="${escape(c.code)}" placeholder="请输入颜色编码"></td><td><button class="remove-color" data-action="colorway-row-delete" data-index="${i}" aria-label="删除第${i+1}行色位">×</button></td>`:`<td>${escape(c.position||'—')}</td><td>${escape(c.material||'—')}</td><td>${escape(c.code||'—')}</td>`}</tr>`).join('')}</tbody></table>`;
+ const letters=Array.from({length:Math.max(26,(colorwayDraft?.colors.length||0)+1)},(_,i)=>lettersAt(i));
+ return `<table class="color-table"><thead><tr><th>色位</th><th>原料</th><th>颜色编码</th>${editable?'<th></th>':''}</tr></thead><tbody ${editable?'id="colorway-rows"':''}>${colors.map((c,i)=>`<tr>${editable?`<td><button class="color-position" value="${escape(c.position||'A')}" data-action="color-position-open" data-index="${i}" aria-label="第${i+1}行色位 ${escape(c.position||'A')}" aria-haspopup="dialog"><span>${escape(c.position||'A')}</span><i class="chevron"></i></button></td><td><input class="color-material" maxlength="100" required aria-label="第${i+1}行原料" value="${escape(c.material)}" placeholder="请输入原料"></td><td><input class="color-code" maxlength="100" required aria-label="第${i+1}行颜色编码" value="${escape(c.code)}" placeholder="请输入颜色编码"></td><td><button class="remove-color" ${colors.length===1?'disabled':''} data-action="colorway-row-delete" data-index="${i}" aria-label="删除第${i+1}行色位">×</button></td>`:`<td>${escape(c.position||'—')}</td><td>${escape(c.material||'—')}</td><td>${escape(c.code||'—')}</td>`}</tr>`).join('')}</tbody></table>`;
 }
-function groupFields(n){const ways=normalizeColorways(n);return `<section class="advice-form-section group-fields"><header class="section-heading"><h2 class="scheme-section-title">款式颜色</h2><button class="section-add" data-action="colorway-add">新增颜色</button></header>${ways.map((c,i)=>`<article class="colorway-card colorway-entry"><button class="colorway-entry-hit" data-action="colorway-edit" data-id="${escape(c.id)}" aria-label="编辑颜色${i+1}"></button><header><h3>颜色${i+1}</h3><span class="colorway-quantity">${colorQuantity(c)}件</span><i class="chevron"></i></header>${colorTable(c.colors)}</article>`).join('')}${ways.length?'':'<p class="color-empty">暂无颜色</p>'}<label>款式说明<input id="style-description" value="${escape(n.styleDescription||'')}" placeholder="请输入款式说明"></label><label>针种<input id="needle-type" value="${escape(n.needleType||'')}" placeholder="请输入针种"></label><label>季节<input id="season" value="${escape(n.season||'')}" placeholder="请输入季节"></label><label>尺寸码数<input id="size-code" value="${escape(n.size||'')}" placeholder="例如 48码或M码"></label></section>`;}
+function colorwayDetails(){const ways=normalizeColorways(noteDraft);return `<div class="color-details-page"><p class="color-details-hint">当前方案共 ${ways.length} 个颜色，点击颜色可进入调整。</p>${ways.map((c,i)=>`<article class="color-details-card"><button class="color-details-hit" data-action="colorway-edit" data-id="${escape(c.id)}" aria-label="调整颜色${i+1}"></button><header><strong>颜色${i+1}</strong><span>${c.colors.length}个色位 · ${colorQuantity(c)}件</span><i class="chevron"></i></header>${colorTable(c.colors)}</article>`).join('')||'<p class="color-empty">未填写颜色</p>'}</div>`;}
+function openColorwayDetails(){
+ if(adviceView==='group'){colorGroupScroll=$('.advice-content').scrollTop;colorDetailsScroll=0;rememberScheme();}
+ Object.assign(noteDraft,structuredClone(schemeDrafts[groupEditorId]||{}));
+ colorwayDetailsReturn=false;adviceView='colors';showAdvice('颜色明细',colorwayDetails(),'返回','colorway-details-close');
+ $('#advice-page .primary').textContent='返回';$('.advice-content').scrollTop=colorDetailsScroll;
+}
+function closeColorwayDetails(){openGroupEditor(groupEditorId);$('.advice-content').scrollTop=colorGroupScroll;}
+function returnFromColorway(){colorwayDraft=null;if(colorwayDetailsReturn)openColorwayDetails();else openGroupEditor(groupEditorId);}
+
+function groupFields(n){const ways=normalizeColorways(n);return `<section class="advice-form-section group-fields"><header class="section-heading"><h2 class="scheme-section-title">颜色</h2><button class="section-add" data-action="colorway-add">新增颜色</button></header>${ways.map((c,i)=>`<article class="colorway-card colorway-entry"><button class="colorway-entry-hit" data-action="colorway-edit" data-id="${escape(c.id)}" aria-label="编辑颜色${i+1}"></button><header><h3>颜色${i+1}</h3><span class="color-position-count">${c.colors.length}个色位</span><span class="colorway-quantity">· ${colorQuantity(c)}件</span><i class="chevron"></i></header></article>`).join('')}${ways.length?`<button class="color-details-link" data-action="colorway-details">查看明细 <span>›</span></button>`:'<p class="color-empty">未填写</p>'}</section><section class="advice-form-section group-fields scheme-info"><h2 class="scheme-section-title">资料</h2><label>款式说明<input id="style-description" maxlength="100" value="${escape(n.styleDescription||'')}" placeholder="请输入款式说明"></label><label>针种<input id="needle-type" maxlength="100" value="${escape(n.needleType||'')}" placeholder="请输入针种"></label><label>季节<input id="season" maxlength="100" value="${escape(n.season||'')}" placeholder="请输入季节"></label><label>尺码<input id="size-code" maxlength="100" value="${escape(n.size||'')}" placeholder="例如 M 或 48码"></label><label>方案备注<textarea id="scheme-remark" maxlength="100" placeholder="请输入方案备注">${escape(n.schemeRemark||'')}</textarea></label></section>`;}
 function openColorway(id){
  if(uploading){notify('照片处理中，请稍候');return;}
  rememberScheme();
  const existing=noteDraft.colorways.find(c=>c.id===id);
  colorwayDraft=existing?structuredClone(existing):{id:crypto.randomUUID(),quantity:1,colors:[]};
  colorwayDraft.quantity=colorQuantity(colorwayDraft);
- if(!colorwayDraft.colors.length){const used=new Set(colorwayDraft.colors.map(c=>c.position).filter(Boolean));const next=Array.from({length:26},(_,i)=>String.fromCharCode(65+i)).find(letter=>!used.has(letter))||'A';colorwayDraft.colors.push({position:next,material:'',code:''});}
- adviceView='colorway';renderColorway();
+ if(!colorwayDraft.colors.length){const used=new Set(colorwayDraft.colors.map(c=>c.position).filter(Boolean));const next=nextPosition(colorwayDraft.colors);colorwayDraft.colors.push({position:next,material:'',code:''});}
+ colorBaseline=JSON.stringify(colorwayDraft);adviceView='colorway';renderColorway();
 }
 function renderColorway(){
  const index=noteDraft.colorways.findIndex(c=>c.id===colorwayDraft.id);
- showAdvice(`颜色${index<0?noteDraft.colorways.length+1:index+1}`,`<section class="colorway-editor"><div class="color-quantity-control"><span>数量</span><div class="stepper"><button data-action="color-minus" aria-label="减少颜色数量" ${colorwayDraft.quantity<=1?'disabled':''}>−</button><output>${colorwayDraft.quantity}</output><button data-action="color-plus" aria-label="增加颜色数量">+</button><span>件</span></div></div>${colorTable(colorwayDraft.colors,true)}<button class="add-color-row" data-action="colorway-row-add">＋ 新增色位</button></section>`,'完成','colorway-save');
+ showAdvice(`颜色${index<0?noteDraft.colorways.length+1:index+1}`,`<section class="colorway-editor"><div class="color-quantity-control"><span>数量</span><div class="stepper"><button data-action="color-minus" aria-label="减少颜色数量" ${colorwayDraft.quantity<=1?'disabled':''}>−</button><output>${colorwayDraft.quantity}</output><button data-action="color-plus" aria-label="增加颜色数量">+</button><span>件</span></div></div>${colorTable(colorwayDraft.colors,true)}<button class="add-color-row" data-action="colorway-row-add">＋ 新增色位</button><p id="colorway-error" class="error" role="alert"></p></section>`,'完成','colorway-save');
 
  if(index>=0)addDeleteFooter('颜色','colorway-delete-confirm',colorwayDraft.id);
 }
@@ -239,30 +263,44 @@ function captureColorway(){
 function openColorPosition(index){
  captureColorway();colorPositionIndex=index;
  const current=colorwayDraft.colors[index].position;
- const letters=Array.from({length:26},(_,i)=>String.fromCharCode(65+i));
+ const letters=Array.from({length:Math.max(26,(colorwayDraft?.colors.length||0)+1)},(_,i)=>lettersAt(i));
  mountPopup(`<section class="color-position-panel" role="dialog" aria-modal="true" aria-labelledby="color-position-title"><h2 id="color-position-title">选择色位</h2><div class="color-position-grid">${letters.map(letter=>`<button data-action="color-position-pick" data-value="${letter}" class="${letter===current?'selected':''}" aria-pressed="${letter===current}">${letter}</button>`).join('')}</div><button class="color-position-cancel" data-action="popup-close">取消</button></section>`,'bottom');
  $('#advice-popup [aria-pressed="true"]')?.focus();
 }
 function saveColorway(){
  captureColorway();
+ document.querySelectorAll('#colorway-rows [aria-invalid]').forEach(el=>el.removeAttribute('aria-invalid'));
+ for(const [i,color] of colorwayDraft.colors.entries()){
+  for(const [key,label,selector] of [['position','色位','.color-position'],['material','原料','.color-material'],['code','颜色编码','.color-code']]){
+   color[key]=String(color[key]||'').trim();
+   if(!color[key]){
+    const message=key==='position'?`请选择第${i+1}行色位`:`请填写色位 ${color.position} 的${label}`;
+    $('#colorway-error').textContent=message;
+    const field=document.querySelectorAll('#colorway-rows tr')[i].querySelector(selector);
+    field.setAttribute('aria-invalid','true');field.focus();field.scrollIntoView({block:'center',behavior:'smooth'});notify(message);return;
+   }
+  }
+ }
+
  const colors=schemeDrafts[groupEditorId].colorways;
  const index=colors.findIndex(c=>c.id===colorwayDraft.id);
  if(index<0)colors.push(structuredClone(colorwayDraft));else colors[index]=structuredClone(colorwayDraft);
- colorwayDraft=null;openGroupEditor(groupEditorId);
+ commitSchemePart('colorways',colors);
+ returnFromColorway();
 }
 
 function adviceTitle(){return noteDraft.category?(noteDraft.category+(noteDraft.tags[0]?'－'+noteDraft.tags[0]:'')+'的修改内容'):'修改内容';}
 function categoryPicker(){
  captureNote();
- mountPopup(`<section class="tag-picker-panel single-tag-picker" role="dialog" aria-modal="true" aria-label="选择修改类别"><header><h2>选择修改类别</h2></header><div class="tag-options">${Object.keys(config.adviceCategories).map(c=>`<button class="tag-option" data-action="category-pick" data-value="${escape(c)}">${escape(c)}${noteDraft.category===c?' ✓':''}</button>`).join('')||'<p>暂无可选类别</p>'}</div><button class="picker-cancel" data-action="popup-close">取消</button></section>`,'bottom');
+ mountPopup(`<section class="tag-picker-panel single-tag-picker" role="dialog" aria-modal="true" aria-label="选择修改类别"><header><h2>选择修改类别</h2></header><div class="tag-options">${Object.keys(config.adviceCategories).map(c=>`<button class="tag-option" data-action="category-pick" data-value="${escape(c)}">${escape(c)}${noteDraft.category===c?' ✓':''}</button>`).join('')||'<p>暂无可用类别</p>'}</div><button class="picker-cancel" data-action="popup-close">取消</button></section>`,'bottom');
 }
 function renderNote(){
  const n=noteDraft,isEdit=editing.modificationGroups.some(item=>item.id===n.id);
- showAdvice('修改项',`<div class="group-entry-heading"><h2>${isEdit?'编辑':'新增'}修改项</h2></div><section class="advice-form-section"><h2>修改类别</h2><div class="advice-category-options">${Object.keys(config.adviceCategories).map(c=>`<button class="${n.category===c?'selected':''}" data-action="advice-category" data-value="${escape(c)}" aria-pressed="${n.category===c}">${escape(c)}</button>`).join('')}</div></section>${n.category?`<button class="tag-picker-entry" data-action="tags-open"><span>修改标签</span><span class="tag-picker-value">${n.tags.length?n.tags.map(escape).join('、'):'请选择'}${n.tags.length>1?` · 已选${n.tags.length}项`:''}</span><i class="chevron"></i></button>`:''}<section class="advice-form-section"><h2><label for="advice-text">${escape(adviceTitle())}</label><button class="voice-entry" data-action="voice-open" aria-label="语音输入"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><rect x="9" y="2" width="6" height="13" rx="3"/><path d="M6 10v2a6 6 0 0 0 12 0v-2M12 18v4M8 22h8"/></svg> 语音输入</button></h2><textarea id="advice-text" maxlength="1000" placeholder="请输入${escape(adviceTitle())}">${escape(n.text)}</textarea><p class="advice-text-count"><span id="advice-text-count">${n.text.length}</span>/1000</p></section><section class="advice-form-section"><h2>修改项附图 <small id="photo-count"></small></h2><div id="advice-photos" class="advice-photos"></div><div class="photo-upload-actions"><label>拍照<input id="advice-camera" class="visually-hidden" type="file" accept="image/*" capture="environment"></label><label>从相册选择<input id="advice-upload" class="visually-hidden" type="file" accept="image/*" multiple></label></div><p class="photo-helper" id="photo-status">可选，最多 6 张，用图片标明需要调整的位置</p></section><p id="advice-error" class="error" role="alert"></p>`, '保存并返回','advice-save');
+ showAdvice('修改项',`<div class="group-entry-heading"><h2>${isEdit?'编辑':'新增'}修改项</h2></div><section class="advice-form-section"><h2>修改类别</h2><div class="advice-category-options">${Object.keys(config.adviceCategories).map(c=>`<button class="${n.category===c?'selected':''}" data-action="advice-category" data-value="${escape(c)}" aria-pressed="${n.category===c}">${escape(c)}</button>`).join('')}</div></section>${n.category?`<button class="tag-picker-entry" data-action="tags-open"><span>修改标签</span><span class="tag-picker-value">${n.tags.length?n.tags.map(escape).join('、'):'请选择'}${n.tags.length>1?` · 已选${n.tags.length}项`:''}</span><i class="chevron"></i></button>`:''}<section class="advice-form-section"><h2><label for="advice-text">${escape(adviceTitle())}</label><button class="voice-entry" data-action="voice-open" aria-label="语音输入"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><rect x="9" y="2" width="6" height="13" rx="3"/><path d="M6 10v2a6 6 0 0 0 12 0v-2M12 18v4M8 22h8"/></svg> 语音输入</button></h2><textarea id="advice-text" maxlength="100" placeholder="请输入${escape(adviceTitle())}">${escape(n.text)}</textarea><p class="advice-text-count"><span id="advice-text-count">${n.text.length}</span>/100</p></section><section class="advice-form-section"><h2>修改项附图 <small id="photo-count"></small></h2><div id="advice-photos" class="advice-photos"></div><div class="photo-upload-actions"><label>拍照<input id="advice-camera" class="visually-hidden" type="file" accept="image/*" capture="environment"></label><label>从相册选择<input id="advice-upload" class="visually-hidden" type="file" accept="image/*" multiple></label></div><p class="photo-helper" id="photo-status">可选，最多 6 张，用图片标明需要调整的位置</p></section><p id="advice-error" class="error" role="alert"></p>`, '保存并返回','advice-save');
  /* item editor intentionally keeps only item fields */
  const categoryBlock=$('.advice-category-options').parentElement;
  if(!adviceFields.category.expanded)categoryBlock.innerHTML=`<button class="tag-picker-entry" data-action="category-open"><span>修改类别</span><span class="tag-picker-value">${escape(n.category||'请选择')}</span><i class="chevron"></i></button>`;
- if(n.category&&(adviceFields.categories[n.category]?.expanded??(n.category==='工艺'||n.category==='尺寸'))){
+ if(n.category&&(adviceFields.categories[n.category]?.expanded??(n.category==='工艺'))){
  $('[data-action="tags-open"]').outerHTML=`<section class="advice-form-section"><h2>修改标签</h2><div class="advice-tag-options">${(config.adviceCategories[n.category]||[]).map(t=>`<button class="${n.tags.includes(t)?'selected':''}" data-action="tag-inline" data-value="${escape(t)}" aria-pressed="${n.tags.includes(t)}">${escape(t)}</button>`).join('')||'<p>暂无可选标签</p>'}</div></section>`;
  }
  const content=$('#advice-popup .advice-content')||$('#advice-page .advice-content');
@@ -292,21 +330,30 @@ function adviceBack(){
  if($('#photo-menu')){closePhotoMenu();return;}
  if($('#photo-preview')){$('#photo-preview').remove();return;}
  if(adviceView==='form'||adviceView==='colorway'){cancelNote();return;}
+ if(adviceView==='colors'){closeColorwayDetails();return;}
  if(uploading){notify('照片处理中，请稍候');return;}
+ if(adviceView==='group'&&!confirmDiscard(groupDirty()))return;
  if(schemeSnapshot)editing=structuredClone(schemeSnapshot);
  schemeDrafts={};
  returnToQuote();
 }
 function cancelNote(){
  if(uploading){notify('照片处理中，请稍候');return;}
- openGroupEditor(groupEditorId);
+ let changed=false;
+ if(adviceView==='colorway'){captureColorway();changed=JSON.stringify(colorwayDraft)!==colorBaseline;}
+ else {captureNote();changed=JSON.stringify(noteDraft)!==noteBaseline;}
+ if(!confirmDiscard(changed))return;
+ if(adviceView==='colorway')returnFromColorway();else openGroupEditor(groupEditorId);
 }
 function saveNote(continueAdding=false){
  if(uploading){notify('照片处理中，请稍候');return;}
  captureNote();
  const index=editing.modificationGroups.findIndex(n=>n.id===noteDraft.id);
  noteDraft.text=noteDraft.text.trim();
+ if(!noteDraft.category||!noteDraft.text){$('#advice-error').textContent='请填写修改类别和修改文字';$('#advice-text').focus();return;}
+ if(noteDraft.text.length>100){$('#advice-error').textContent='修改文字最多 100 字';return;}
  if(index===-1)editing.modificationGroups.push(structuredClone(noteDraft));else editing.modificationGroups[index]=structuredClone(noteDraft);
+ markSaved();
  adviceFilter='全部';
  if(continueAdding){openNote(null,noteDraft.groupId);}else{openGroupEditor(noteDraft.groupId);}
 }
@@ -343,7 +390,7 @@ function previewPhoto(id,index){
 }
 async function compressPhoto(file){
  if(!file.type.startsWith('image/'))throw new Error('请选择图片文件');
- if(file.size>20*1024*1024)throw new Error('单张图片请小于 20MB');
+ if(file.size>50*1024*1024)throw new Error('单张图片不能超过 50MB');
  const url=URL.createObjectURL(file);
  try{const img=new Image();img.src=url;await img.decode();const scale=Math.min(1,1000/Math.max(img.naturalWidth,img.naturalHeight));const canvas=document.createElement('canvas');canvas.width=Math.max(1,Math.round(img.naturalWidth*scale));canvas.height=Math.max(1,Math.round(img.naturalHeight*scale));const context=canvas.getContext('2d');context.fillStyle='#fff';context.fillRect(0,0,canvas.width,canvas.height);context.drawImage(img,0,0,canvas.width,canvas.height);return canvas.toDataURL('image/jpeg',.75);}catch(error){if(error.message==='请选择图片文件')throw error;throw new Error('无法读取该图片，请选择 JPG、PNG 或 WebP 图片');}finally{URL.revokeObjectURL(url);}
 }
@@ -369,12 +416,12 @@ document.addEventListener('change',async e=>{
 });
 
 function renderLinkedOrder(){const value=$('#linked-order-value');if(!value)return;value.textContent=linkedOrder?`${linkedOrder.id} · ${linkedOrder.customer?.company||linkedOrder.customer?.name||''}`:'请选择 ›';$('#unlink-order').hidden=!linkedOrder;}
-function orderChoices(){const rows=[{id:'DX20260928-001',customer:{name:'陈晓',company:'云织服饰'},created:'2026-09-28 10:30:00'},{id:'DX20260923-002',customer:{name:'林悦',company:'青禾设计工作室'},created:'2026-09-23 14:00:00'},{id:'DX20260917-003',customer:{name:'陈晓',company:'云织服饰'},created:'2026-09-17 09:20:00'}];try{const saved=JSON.parse(localStorage.getItem('cr-assisted-order-v1')||'null');if(saved?.id)rows.unshift(saved);}catch{}return [...new Map(rows.map(o=>[o.id,o])).values()];}
-function openOrderPicker(){simple('关联订单',`<div class="order-search"><input id="order-query" type="search" placeholder="搜索订单号、客户" aria-label="搜索订单号、客户"><div class="order-date-range"><label>开始日期<input id="order-from" type="date"></label><label>结束日期<input id="order-to" type="date"></label></div><p class="order-demo-label">演示订单及本机已提交订单</p></div><div id="order-options"></div>`);renderOrderOptions();$('#order-query').addEventListener('input',renderOrderOptions);$('#order-from').addEventListener('change',renderOrderOptions);$('#order-to').addEventListener('change',renderOrderOptions);}
+function orderChoices(){const rows=[{id:'DX20260928-001',customer:{name:'陈晓',company:'云织服饰'},created:'2026-09-28 10:30:00'},{id:'DX20260923-002',customer:{name:'林悦',company:'青禾设计工作室'},created:'2026-09-23 14:00:00'},{id:'DX20260917-003',customer:{name:'陈晓',company:'云织服饰'},created:'2026-09-17 09:20:00'}];return rows;}
+function openOrderPicker(){simple('关联订单',`<div class="order-search"><input id="order-query" type="search" placeholder="搜索订单号、客户" aria-label="搜索订单号、客户"><div class="order-date-range"><label>开始日期<input id="order-from" type="date"></label><label>结束日期<input id="order-to" type="date"></label></div><p class="order-demo-label">示例订单</p></div><div id="order-options"></div>`);renderOrderOptions();$('#order-query').addEventListener('input',renderOrderOptions);$('#order-from').addEventListener('change',renderOrderOptions);$('#order-to').addEventListener('change',renderOrderOptions);}
 function renderOrderOptions(){const query=$('#order-query').value.trim().toLowerCase(),from=$('#order-from').value,to=$('#order-to').value;if(from&&to&&from>to){$('#order-options').innerHTML='<p class="helper">结束日期不能早于开始日期</p>';return;}const rows=orderChoices().filter(o=>{const date=String(o.created||'').slice(0,10);return `${o.id} ${o.customer?.name||''} ${o.customer?.company||''}`.toLowerCase().includes(query)&&(!from||date>=from)&&(!to||date<=to);});$('#order-options').innerHTML=rows.map(o=>`<button class="option-row order-option" data-action="select-linked-order" data-order-id="${escape(o.id)}"><div><strong>${escape(o.id)}</strong><p>${escape(o.customer?.company||'')} · ${escape(o.customer?.name||'')}</p><p>${escape(o.created||'')}</p></div><span>${linkedOrder?.id===o.id?'✓':'›'}</span></button>`).join('')||'<p class="helper">暂无匹配订单</p>';}
 function customer(){return {name:$('#name').value.trim(),company:$('#company').value.trim(),phone:$('#phone').value.trim()};}
 function fillCustomer(c){for(const key of ['name','company','phone'])$('#'+key).value=c[key]||'';}
-function save(){try{localStorage.setItem(config.storageKey,JSON.stringify({products,customer:customer(),linkedOrder}));notify('已暂存到本机');}catch{notify('浏览器无法保存，请勿关闭当前页面');}}
+function save(){notify('演示：已暂存');}
 function add(){simple('继续添加',config.products.map(p=>`<button class="option-row" data-action="pick-product" data-id="${p.id}"><img src="${p.image}" alt="${escape(p.name||p.id)}"><div><strong>${escape(p.name||p.id)}</strong><p>${p.id} · ${escape(p.category)}</p></div><span class="choice">${products.some(x=>x.id===p.id)?'已添加':'＋'}</span></button>`).join(''),'完成','close');}
 function recognition(type){
  if(type==='card')simple('名片识别','<p class="helper">演示模式：选择名片图片后，使用示例客户信息填入表单。</p><label class="file-label">选择名片图片<input id="card-file" type="file" accept="image/*"></label><p id="card-error" class="error"></p>','识别并填入','recognize-card');
@@ -385,7 +432,7 @@ document.addEventListener('click', e=>{
  switch(action){
  case 'entry-delete-open':if(!uploading)mountPopup(`<section class="discard-dialog" role="alertdialog" aria-modal="true" aria-labelledby="delete-title"><h2 id="delete-title">删除${escape(button.dataset.label)}？</h2><p>确认删除这${button.dataset.label==='修改项'?'条':'个'}${escape(button.dataset.label)}？</p><div><button data-action="popup-close">取消</button><button class="danger" data-action="${escape(button.dataset.confirm)}" data-id="${escape(id)}">删除</button></div></section>`,'centered');break;
  case 'entry-delete-cancel':dismissPopup();break;
- case 'scheme-delete-confirm':if(!uploading){dismissPopup();editing.modificationGroups=editing.modificationGroups.filter(n=>(n.groupId||n.id)!==id);delete editing.schemePhotos?.[id];delete schemeDrafts[id];expandedModifications.delete(id);returnToQuote();}break;
+ case 'scheme-delete-confirm':if(!uploading){dismissPopup();editing.modificationGroups=editing.modificationGroups.filter(n=>(n.groupId||n.id)!==id);delete editing.schemePhotos?.[id];delete schemeDrafts[id];expandedModifications.delete(id);markSaved(true);returnToQuote();}break;
  case 'advice-open':openAdvice();break;
  case 'group-open':{if(!adviceView)captureQuote();const item=editing.modificationGroups.find(n=>n.id===button.dataset.id);openGroupEditor(button.dataset.group||(item?.groupId||item?.id));break;}
  case 'modification-toggle':{
@@ -394,22 +441,23 @@ document.addEventListener('click', e=>{
  $('#modification-list').outerHTML=modificationList(items,groupEditorId);break;
  }
  case 'group-open-item':openNote(id);break;
- case 'item-delete':rememberScheme();editing.modificationGroups=editing.modificationGroups.filter(n=>n.id!==id);openGroupEditor(groupEditorId);break;
+ case 'item-delete':if(!confirm('确定删除这条修改项？'))break;rememberScheme();removeModification(id);openGroupEditor(groupEditorId);break;
  case 'group-save':{
    if(uploading){notify('照片处理中，请稍候');break;}
    captureNote();
    let first=editing.modificationGroups.find(n=>(n.groupId||n.id)===groupEditorId);
-   const groupData={colorways:normalizeColorways(noteDraft),colors:[],styleDescription:noteDraft?.styleDescription||'',needleType:noteDraft?.needleType||'',season:noteDraft?.season||'',size:noteDraft?.size||''};
+   const groupData={colorways:normalizeColorways(noteDraft),colors:[],styleDescription:noteDraft?.styleDescription||'',needleType:noteDraft?.needleType||'',season:noteDraft?.season||'',size:noteDraft?.size||'',schemeRemark:noteDraft?.schemeRemark||''};
    if(first) Object.assign(first,groupData);
-   else if(noteDraft && (schemePhotoTarget().photos.length||groupData.colorways.length||groupData.styleDescription||groupData.needleType||groupData.season||groupData.size)) {
+   else if(noteDraft && (schemePhotoTarget().photos.length||groupData.colorways.length||groupData.styleDescription||groupData.needleType||groupData.season||groupData.size||groupData.schemeRemark)) {
      editing.modificationGroups.push({id:crypto.randomUUID(),groupId:groupEditorId,category:'',tags:[],text:'',photos:[],...groupData});
    }
+   if(!editing.modificationGroups.filter(n=>(n.groupId||n.id)===groupEditorId).some(isModification)&&!groupData.colorways.length&&!['styleDescription','needleType','season','size','schemeRemark'].some(k=>groupData[k].trim())&&!schemePhotoTarget().photos.length)editing.modificationGroups=editing.modificationGroups.filter(n=>(n.groupId||n.id)!==groupEditorId);
    delete schemeDrafts[groupEditorId];
-   editing.quantity=colorQuantityTotal(editing);
+   markSaved(true);
    returnToQuote();
    break;
  }
- case 'group-delete':{const group=button.dataset.group;if(!confirm('确定删除这个修改内容方案吗？'))break;if(!adviceView)captureQuote();editing.modificationGroups=editing.modificationGroups.filter(n=>(n.groupId||n.id)!==group);delete editing.schemePhotos?.[group];delete schemeDrafts[group];returnToQuote();notify('已删除修改内容方案');break;}
+ case 'group-delete':{const group=button.dataset.group;if(!confirm('确定删除这个修改内容方案吗？'))break;if(!adviceView)captureQuote();editing.modificationGroups=editing.modificationGroups.filter(n=>(n.groupId||n.id)!==group);delete editing.schemePhotos?.[group];delete schemeDrafts[group];markSaved(true);returnToQuote();notify('已删除修改内容方案');break;}
 
  case 'advice-add':requestAdviceAction(()=>openNote());break;
  case 'advice-add-group':if(!adviceView)captureQuote();openGroupEditor();break;
@@ -420,9 +468,11 @@ document.addEventListener('click', e=>{
  case 'category-open':categoryPicker();break;
  case 'category-pick':dismissPopup();captureNote();noteDraft.category=button.dataset.value;noteDraft.tags=[];renderNote();break;
  case 'tag-inline':captureNote();noteDraft.tags=[button.dataset.value];renderNote();break;
- case 'colorway-add':openColorway();break;
- case 'colorway-edit':openColorway(id);break;
- case 'colorway-delete-confirm':dismissPopup();schemeDrafts[groupEditorId].colorways=schemeDrafts[groupEditorId].colorways.filter(c=>c.id!==id);colorwayDraft=null;openGroupEditor(groupEditorId);break;
+ case 'colorway-add':colorwayDetailsReturn=false;openColorway();break;
+ case 'colorway-details':openColorwayDetails();break;
+ case 'colorway-details-close':closeColorwayDetails();break;
+ case 'colorway-edit':colorwayDetailsReturn=adviceView==='colors';if(colorwayDetailsReturn)colorDetailsScroll=$('.advice-content').scrollTop;openColorway(id);break;
+ case 'colorway-delete-confirm':dismissPopup();schemeDrafts[groupEditorId].colorways=schemeDrafts[groupEditorId].colorways.filter(c=>c.id!==id);commitSchemePart('colorways',schemeDrafts[groupEditorId].colorways);returnFromColorway();break;
  case 'color-position-open':openColorPosition(Number(button.dataset.index));break;
  case 'color-position-pick':{
  const index=colorPositionIndex;
@@ -433,14 +483,18 @@ document.addEventListener('click', e=>{
  }
  case 'color-minus':captureColorway();colorwayDraft.quantity=Math.max(1,colorwayDraft.quantity-1);renderColorway();break;
  case 'color-plus':captureColorway();colorwayDraft.quantity+=1;renderColorway();break;
- case 'colorway-row-add':captureColorway();const used=new Set(colorwayDraft.colors.map(c=>c.position).filter(Boolean));const next=Array.from({length:26},(_,i)=>String.fromCharCode(65+i)).find(letter=>!used.has(letter))||'A';colorwayDraft.colors.push({position:next,material:'',code:''});renderColorway();break;
- case 'colorway-row-delete':captureColorway();colorwayDraft.colors.splice(Number(button.dataset.index),1);renderColorway();break;
+ case 'colorway-row-add':{
+ captureColorway();const used=new Set(colorwayDraft.colors.map(c=>c.position).filter(Boolean));const next=nextPosition(colorwayDraft.colors);
+ colorwayDraft.colors.push({position:next,material:colorwayDraft.colors.at(-1)?.material||'',code:''});renderColorway();
+ const row=$('#colorway-rows').lastElementChild;const input=row.querySelector(colorwayDraft.colors.at(-1).material.trim()?'.color-code':'.color-material');input.focus();input.scrollIntoView({block:'center',behavior:'smooth'});break;
+ }
+ case 'colorway-row-delete':if(!confirm('确定删除这个色位？'))break;captureColorway();if(colorwayDraft.colors.length<=1){notify('至少保留一个色位');break;}colorwayDraft.colors.splice(Number(button.dataset.index),1);renderColorway();break;
  case 'colorway-save':saveColorway();break;
- case 'colorway-cancel':colorwayDraft=null;openGroupEditor(groupEditorId);break;
+ case 'colorway-cancel':cancelNote();break;
  case 'advice-category':captureNote();noteDraft.category=button.dataset.value;noteDraft.tags=[];renderNote();break;
  case 'voice-open':openVoice();break;
  case 'voice-clear':if(voiceSession&&!voiceSession.active)$('#voice-text').value='';break;
- case 'voice-confirm':if(voiceSession&&!voiceSession.active){noteDraft.text=$('#voice-text').value.slice(0,1000);dismissPopup();renderNote();}break;
+ case 'voice-confirm':if(voiceSession&&!voiceSession.active){noteDraft.text=$('#voice-text').value.slice(0,100);dismissPopup();renderNote();}break;
  case 'tags-open':openTagPicker();break;
  case 'tags-pick':{const tag=button.dataset.value;pickerTags=[tag];commitTags();break;}
  case 'tags-confirm':commitTags();break;
@@ -454,7 +508,7 @@ document.addEventListener('click', e=>{
  case 'style-share':notify('演示页面，分享功能待接入');break;
  case 'style-preview':openStyleDetail(products[Number(button.dataset.index)]);break;
  case 'product-photo-preview':previewPhoto('attachment',Number(button.dataset.index));break;
- case 'product-photo-remove':schemePhotoTarget().photos.splice(Number(button.dataset.index),1);renderProductPhotos();break;
+ case 'product-photo-remove':if(!confirm('确定删除这张图片？'))break;schemePhotoTarget().photos.splice(Number(button.dataset.index),1);renderProductPhotos();break;
  case 'photo-menu':showPhotoMenu();break;
  case 'photo-menu-close':closePhotoMenu();break;
  case 'photo-camera':closePhotoMenu();$(adviceView==='form'?'#advice-camera':'#product-camera').click();break;
@@ -466,8 +520,8 @@ document.addEventListener('click', e=>{
  case 'advice-keep':dismissPopup();break;
  case 'advice-delete':if(!uploading)$('#note-delete-warning').hidden=false;break;
  case 'advice-delete-cancel':button.closest('.delete-warning').hidden=true;break;
- case 'advice-delete-confirm':if(!uploading){dismissPopup();editing.modificationGroups=editing.modificationGroups.filter(n=>n.id!==id);openGroupEditor(groupEditorId);notify('已删除修改项');}break;
- case 'advice-photo-remove':noteDraft.photos.splice(Number(button.dataset.index),1);renderPhotos();break;
+ case 'advice-delete-confirm':if(!uploading){dismissPopup();removeModification(id);openGroupEditor(groupEditorId);notify('已删除修改项');}break;
+ case 'advice-photo-remove':if(!confirm('确定删除这张图片？'))break;noteDraft.photos.splice(Number(button.dataset.index),1);renderPhotos();break;
  case 'advice-preview':previewPhoto(button.dataset.id,Number(button.dataset.index));break;
  case 'advice-preview-close':$('#photo-preview').remove();break;
  case 'edit':edit(id);break;
@@ -479,8 +533,8 @@ document.addEventListener('click', e=>{
  case 'pick-product':if(products.some(p=>p.id===id)){notify('该款式已在清单中');break;}products.push({...config.products.find(p=>p.id===id),quantity:1,price:'',minimum:'',currency:'CNY',requirements:[],remark:'',modificationGroups:[]});render();add();notify('已添加到选品清单');break;
 
  case 'requirement':{const r=button.dataset.value;editing.requirements=editing.requirements.includes(r)?editing.requirements.filter(x=>x!==r):[...editing.requirements,r];button.classList.toggle('selected',editing.requirements.includes(r));button.setAttribute('aria-pressed',editing.requirements.includes(r));break;}
- case 'plus':case 'minus':editing.quantity=Math.max(1,Math.min(999,editing.quantity+(action==='plus'?1:-1)));$('#quantity').value=editing.quantity;$('[data-action="minus"]').disabled=editing.quantity===1;$('[data-action="plus"]').disabled=editing.quantity===999;break;
- case 'confirm-edit':if(uploading){notify('照片处理中，请稍候');break;}{editing.remark=$('#remark').value.trim();products=products.map(p=>p.id===editing.id?editing:p);render();close();break;}
+ case 'plus':case 'minus':editing.quantity=Math.max(0,editing.quantity+(action==='plus'?1:-1));$('#quantity').value=editing.quantity;$('[data-action="minus"]').disabled=editing.quantity===0;$('[data-action="plus"]').disabled=false;break;
+ case 'confirm-edit':if(uploading){notify('照片处理中，请稍候');break;}{editing.remark=$('#remark').value.trim();products=products.map(p=>p.id===editing.id?editing:p);render();close(true);break;}
  case 'link-order':openOrderPicker();break;
  case 'unlink-order':linkedOrder=null;renderLinkedOrder();break;
  case 'select-linked-order':{const selected=orderChoices().find(o=>o.id===button.dataset.orderId);if(selected){linkedOrder={id:selected.id,customer:selected.customer,created:selected.created};renderLinkedOrder();close();}break;}
@@ -491,22 +545,23 @@ document.addEventListener('click', e=>{
  case 'recognize-card':{const file=$('#card-file').files[0];if(!file||!file.type.startsWith('image/')){$('#card-error').textContent='请先选择一张名片图片';break;}fillCustomer(config.customers[0]);close();notify('已填入示例识别结果，请核对客户信息');break;}
  case 'recognize-text':{const text=$('#recognition-text').value;const phone=text.match(/(?:\+86[- ]?)?1[3-9]\d{9}/)?.[0]||'';const name=text.match(/(?:姓名|联系人)\s*[:：]\s*([^\n，,]+)/)?.[1]?.trim()||'';const company=text.match(/(?:企业\/品牌|企业|品牌|公司)\s*[:：]\s*([^\n，,]+)/)?.[1]?.trim()||'';if(!name||!company||!phone){$('#text-error').textContent='请按示例填写姓名、企业和有效手机号码';break;}fillCustomer({name,company,phone});close();notify('已提取客户信息，请核对');break;}
  case 'save':save();break;
- case 'order':{if(!products.length){notify('请先添加选品');break;}const c=customer();const missing=['name','company','phone'].find(k=>!c[k]);if(missing){notify('请完善客户必填信息');$('#'+missing).focus();break;}if(!/^[+\d][\d\s()-]{5,19}$/.test(c.phone)){notify('请填写有效联系电话');$('#phone').focus();break;}simple(orderEditing?'确认修改':'确认下单',`<div class="success"><h2>${escape(c.name)} · ${escape(c.company)}</h2><p>共 ${products.length} 款 / ${products.reduce((n,p)=>n+p.quantity,0)} 件<br>联系电话：${escape(c.phone)}</p></div>${orderSuggestions()}<p class="helper">演示订单，仅在当前浏览器展示，不会提交真实订单。</p>`,'确认提交','submit-order');break;}
- case 'submit-order':{const number=orderEditing?.id||'DX'+new Date().toISOString().slice(0,10).replaceAll('-','')+'-'+Date.now().toString().slice(-5);try{localStorage.setItem('cr-assisted-order-v1',JSON.stringify({...orderEditing,id:number,created:orderEditing?.created||new Date().toLocaleString('sv-SE'),products,customer:customer(),linkedOrder}));sessionStorage.removeItem('cr-assisted-order-edit');location.href='order-mobile.html';}catch{notify('订单保存失败，请重试');}break;}
- case 'leave-order-edit':sessionStorage.removeItem('cr-assisted-order-edit');location.href='order-mobile.html';break;
- case 'back':case 'home':if(adviceView){adviceBack();break;}if(!$('#overlay').hidden){close();break;}if(orderEditing){simple('返回订单详情','<p class="helper">未保存的修改将不会保留。</p>','放弃修改并返回','leave-order-edit');break;}simple('代客选品','<p class="helper">为客户选择款式，填写洽谈信息与客户资料。</p>','继续选品','close');break;
- case 'more':if(adviceView){notify('完成修改内容后可使用更多操作');break;}simple('更多操作','<button class="menu-option" data-action="save">暂存当前选品</button><button class="menu-option" data-action="reset">恢复初始演示</button><p class="helper" style="margin-top:20px">手机端 HTML 演示 · 数据仅保存在本机</p>');break;
- case 'reset':simple('恢复初始演示','<p class="helper">清除本机暂存和客户信息，恢复截图中的两款选品。</p>','确认恢复','confirm-reset');break;
- case 'confirm-reset':linkedOrder=null;renderLinkedOrder();products=fresh();fillCustomer({});try{localStorage.removeItem(config.storageKey);}catch{}render();close();notify('已恢复初始演示');break;
+ case 'order':{if(!products.length){notify('请先添加选品');break;}const c=customer();const missing=['name','company','phone'].find(k=>!c[k]);if(missing){notify('请完善客户必填信息');$('#'+missing).focus();break;}if(!/^[+\d][\d\s()-]{5,19}$/.test(c.phone)){notify('请填写有效联系电话');$('#phone').focus();break;}simple('确认下单',`<div class="success"><h2>${escape(c.name)} · ${escape(c.company)}</h2><p>共 ${products.length} 款 / ${products.reduce((n,p)=>n+p.quantity,0)} 件<br>联系电话：${escape(c.phone)}</p></div>${orderSuggestions()}<p class="helper">演示订单，仅在当前浏览器展示，不会提交真实订单。</p>`,'确认提交','submit-order');break;}
+ case 'submit-order':close();notify('演示：提交成功');break;
+ case 'back':case 'home':if(adviceView){adviceBack();break;}if(!$('#overlay').hidden){close();break;}simple('代客选品','<p class="helper">为客户选择款式，填写洽谈信息与客户资料。</p>','继续选品','close');break;
+ case 'more':if(adviceView){notify('完成修改内容后可使用更多操作');break;}simple('更多操作','<button class="menu-option" data-action="save">暂存</button><button class="menu-option" data-action="reset">恢复初始演示</button><p class="helper" style="margin-top:20px">演示操作</p>');break;
+ case 'reset':simple('恢复初始演示','<p class="helper">恢复两个方案及示例客户信息。</p>','确认恢复','confirm-reset');break;
+ case 'confirm-reset':{const initial=demoDraft();linkedOrder=null;renderLinkedOrder();products=initial.products;fillCustomer(initial.customer);schemeDrafts={};expandedModifications.clear();render();close();notify('已恢复初始演示');break;}
  }
 });
+document.addEventListener('change',e=>{if(e.target.id==='quantity'&&editing){const n=Number(e.target.value);if(Number.isInteger(n)&&n>=0)editing.quantity=n;else {notify('请输入有效整数件数');e.target.value=editing.quantity;}}});
+let swipeStart=null;
+document.addEventListener('touchstart',e=>{if(adviceView&&!e.target.closest('input,textarea,button'))swipeStart={x:e.touches[0].clientX,y:e.touches[0].clientY};else swipeStart=null;},{passive:true});
+document.addEventListener('touchend',e=>{if(!swipeStart)return;const t=e.changedTouches[0],dx=t.clientX-swipeStart.x,dy=t.clientY-swipeStart.y;swipeStart=null;if(Math.abs(dx)>110&&Math.abs(dy)<45&&adviceView)adviceBack();},{passive:true});
 $('#overlay').addEventListener('click',e=>{if(e.target===$('#overlay'))close();});
 document.addEventListener('keydown',e=>{if($('#style-detail')){if(e.key==='Escape'){e.preventDefault();if($('#photo-preview')){$('#photo-preview').remove();$('#style-detail .style-detail-hero').focus();}else closeStyleDetail();}return;}if(adviceView){if(e.key==='Escape')adviceBack();return;}if($('#overlay').hidden)return;if(e.key==='Escape'){if($('#photo-preview')){$('#photo-preview').remove();return;}if($('#photo-menu')){closePhotoMenu();return;}close();}if(e.key==='Tab'){const controls=[...$('#sheet').querySelectorAll('button:not(:disabled),input,textarea,select,textarea')];if(!controls.length)return;const first=controls[0],last=controls.at(-1);if(e.shiftKey&&(document.activeElement===first||document.activeElement===$('#sheet'))){e.preventDefault();last.focus();}else if(!e.shiftKey&&(document.activeElement===last||document.activeElement===$('#sheet'))){e.preventDefault();first.focus();}}});
 $('#customer-form').addEventListener('submit',e=>e.preventDefault());
-let loadedDraft=false;
-try{const draft=orderEditing||JSON.parse(localStorage.getItem(config.storageKey)||'null');if(draft&&Array.isArray(draft.products)){loadedDraft=true;products=draft.products.map(p=>({...fresh().find(x=>x.id===(config.legacyStyleIds?.[p.id]||p.id)),...p,id:config.legacyStyleIds?.[p.id]||p.id})).filter(p=>config.products.some(x=>x.id===p.id)).map(p=>({...p,name:config.products.find(x=>x.id===p.id).name,category:config.products.find(x=>x.id===p.id).category,image:config.products.find(x=>x.id===p.id).image,quantity:Math.max(1,Math.min(999,Math.floor(Number(p.quantity)||1))),requirements:Array.isArray(p.requirements)?p.requirements.filter(r=>config.requirements.includes(r)):[],modificationGroups:normalizeSuggestions(p.modificationGroups??p.suggestions).map(n=>({...n,groupId:n.groupId||n.id}))}));fillCustomer(draft.customer||{});linkedOrder=draft.linkedOrder||null;}}catch{}
-if(!orderEditing&&!loadedDraft){const initial=demoDraft();products=initial.products;fillCustomer(initial.customer);try{localStorage.setItem(config.storageKey,JSON.stringify(initial));}catch{} }
-renderLinkedOrder();
-if(orderEditing){$('.navbar h1').textContent='编辑订单';$('[data-action="order"]').textContent='保存订单';}
-render();
+const initial=demoDraft();products=initial.products;fillCustomer(initial.customer);
+renderLinkedOrder();render();
+
+
 })();

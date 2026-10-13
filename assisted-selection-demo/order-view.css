@@ -3,3 +3,4 @@
 [hidden]{display:none!important}
 
 .scheme-photo-title{font-size:13px;font-weight:400;color:#8793a3;margin:16px 0 0}
+.order-color{border-bottom:1px solid #edf0f4;padding:0 0 4px}.order-color summary{display:flex;align-items:center;gap:12px;min-height:50px;cursor:pointer;list-style:none;font-size:13px}.order-color summary::-webkit-details-marker{display:none}.order-color summary span{margin-left:auto;color:#8793a3}.order-color summary:after{content:'›';color:#8793a3;font-size:20px}.order-color[open] summary:after{transform:rotate(90deg)}.order-color table{margin-bottom:12px}.scheme-empty{color:#8793a3;font-size:13px}
