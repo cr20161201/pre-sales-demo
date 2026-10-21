@@ -6,11 +6,10 @@
     name,
     english: ({工艺:'Process',面料:'Fabric',其他:'Other'})[name] || name,
     tags: tags.map((tag, j) => ({id: `tag-${i + 1}-${j + 1}`, name: tag, enabled: true})),
-    enabled: true,
-    expanded: name === '工艺'
+    enabled: true
   }));
-  const categories = defaults.map(category => ({...category, expanded: category.expanded}));
+  const categories = defaults;
   const escape = value => String(value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const table = document.querySelector('#categories');
-  table.innerHTML = categories.map(c => `<tr><td>${escape(c.name)}</td><td>${escape(c.english || c.name)}</td><td>列表单选</td><td><input type="checkbox" data-category="${escape(c.name)}" aria-label="${escape(c.name)}是否展开" ${c.expanded ? 'checked' : ''}></td><td class="row-actions"><button disabled>删除</button><button disabled>停用</button><a class="text-link" href="advice-tags.html?category=${encodeURIComponent(c.name)}">管理</a></td></tr>`).join('');
+  table.innerHTML = categories.map(c => `<tr><td>${escape(c.name)}</td><td>${escape(c.english || c.name)}</td><td>列表单选</td><td class="row-actions"><button disabled>删除</button><button disabled>停用</button><a class="text-link" href="advice-tags.html?category=${encodeURIComponent(c.name)}">管理</a></td></tr>`).join('');
 })();

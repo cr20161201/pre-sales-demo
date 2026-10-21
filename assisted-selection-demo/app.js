@@ -14,8 +14,8 @@ let products = fresh(), editing = null, lastFocus = null, toastTimer, styleDetai
 let adviceView = null, groupEditorId = null, noteDraft = null, noteBaseline = '', adviceFilter = '全部', pendingAdviceAction = null, pickerTags = [], popupFocus = null, uploading = false, quoteScroll = 0, schemeDrafts = {}, colorwayDetailsReturn = false, colorDetailsScroll = 0, colorGroupScroll = 0;
 let colorwayDraft=null, colorPositionIndex=null, schemeSnapshot=null;
 let colorBaseline='',quoteBaseline='';
-const schemeKeys=['colorways','colors','styleDescription','needleType','season','size','schemeRemark'];
-const schemeData=n=>Object.fromEntries(schemeKeys.map(k=>[k,structuredClone(n?.[k]??(k==='colorways'||k==='colors'?[]:''))]));
+const schemeKeys=['render3D','colorways','colors','styleDescription','needleType','season','size','schemeRemark'];
+const schemeData=n=>Object.fromEntries(schemeKeys.map(k=>[k,structuredClone(n?.[k]??(k==='render3D'?'否':k==='colorways'||k==='colors'?[]:''))]));
 const lettersAt=index=>{let out='';for(let n=index+1;n>0;n=Math.floor((n-1)/26))out=String.fromCharCode(65+(n-1)%26)+out;return out;};
 const nextPosition=colors=>{const used=new Set(colors.map(c=>c.position));let i=0;while(used.has(lettersAt(i)))i++;return lettersAt(i);};
 function firstScheme(){let n=editing.modificationGroups.find(n=>(n.groupId||n.id)===groupEditorId);if(!n){n={id:crypto.randomUUID(),groupId:groupEditorId,category:'',tags:[],text:'',photos:[],...schemeData(null)};editing.modificationGroups.push(n);}return n;}
@@ -33,7 +33,7 @@ function removeModification(id){
  editing.modificationGroups=editing.modificationGroups.filter(n=>n.id!==id);
  let next=editing.modificationGroups.find(n=>(n.groupId||n.id)===group);
  if(next)Object.assign(next,data);
- else if(data.colorways.length||data.styleDescription||data.needleType||data.season||data.size||data.schemeRemark||editing.schemePhotos?.[group]?.length)editing.modificationGroups.push({id:crypto.randomUUID(),groupId:group,category:'',tags:[],text:'',photos:[],...data});
+ else if(data.render3D==='是'||data.colorways.length||data.styleDescription||data.needleType||data.season||data.size||data.schemeRemark||editing.schemePhotos?.[group]?.length)editing.modificationGroups.push({id:crypto.randomUUID(),groupId:group,category:'',tags:[],text:'',photos:[],...data});
  markSaved();
 }
 function commitSchemePart(key,value){firstScheme()[key]=structuredClone(value);if(schemeDrafts[groupEditorId])schemeDrafts[groupEditorId][key]=structuredClone(value);markSaved();}
@@ -216,7 +216,7 @@ function openNote(id,groupId){
  noteDraft.category ||= '工艺';
  noteBaseline=JSON.stringify(noteDraft);pendingAdviceAction=null;adviceView='form';renderNote();
 }
-function captureNote(){if($('#advice-text'))noteDraft.text=$('#advice-text').value;for(const [key,id] of Object.entries({styleDescription:'style-description',needleType:'needle-type',season:'season',size:'size-code',schemeRemark:'scheme-remark'})){const input=$('#'+id);if(input)noteDraft[key]=input.value;}if($('#color-table-body'))noteDraft.colors=[...$('#color-table-body').querySelectorAll('tr')].map(row=>({position:row.querySelector('.color-position').value,material:row.querySelector('.color-material').value.trim(),code:row.querySelector('.color-code').value.trim()})).filter(color=>color.position||color.material||color.code);}
+function captureNote(){if($('#advice-text'))noteDraft.text=$('#advice-text').value;for(const [key,id] of Object.entries({styleDescription:'style-description',needleType:'needle-type',season:'season',size:'size-code',schemeRemark:'scheme-remark',render3D:'render-3d'})){const input=$('#'+id);if(input)noteDraft[key]=input.value;}if($('#color-table-body'))noteDraft.colors=[...$('#color-table-body').querySelectorAll('tr')].map(row=>({position:row.querySelector('.color-position').value,material:row.querySelector('.color-material').value.trim(),code:row.querySelector('.color-code').value.trim()})).filter(color=>color.position||color.material||color.code);}
 function normalizeColorways(n){
  const rows=colors=>(Array.isArray(colors)?colors:[]).map((c,i)=>typeof c==='string'?{position:String.fromCharCode(65+i),material:'',code:c}:{position:String(c.position||''),material:String(c.material||''),code:String(c.code||'')});
  if(Array.isArray(n.colorways))return n.colorways.map(c=>({id:String(c.id||crypto.randomUUID()),quantity:colorQuantity(c),colors:rows(c.colors)}));
@@ -240,7 +240,7 @@ function openColorwayDetails(){
 function closeColorwayDetails(){openGroupEditor(groupEditorId);$('.advice-content').scrollTop=colorGroupScroll;}
 function returnFromColorway(){colorwayDraft=null;if(colorwayDetailsReturn)openColorwayDetails();else openGroupEditor(groupEditorId);}
 
-function groupFields(n){const ways=normalizeColorways(n);return `<section class="advice-form-section group-fields"><header class="section-heading"><h2 class="scheme-section-title">颜色</h2><button class="section-add" data-action="colorway-add">新增颜色</button></header>${ways.map((c,i)=>`<article class="colorway-card colorway-entry"><button class="colorway-entry-hit" data-action="colorway-edit" data-id="${escape(c.id)}" aria-label="编辑颜色${i+1}"></button><header><h3>颜色${i+1}</h3><span class="color-position-count">${c.colors.length}个色位</span><span class="colorway-quantity">· ${colorQuantity(c)}件</span><i class="chevron"></i></header></article>`).join('')}${ways.length?`<button class="color-details-link" data-action="colorway-details">查看明细 <span>›</span></button>`:'<p class="color-empty">未填写</p>'}</section><section class="advice-form-section group-fields scheme-info"><h2 class="scheme-section-title">资料</h2><label>款式说明<input id="style-description" maxlength="100" value="${escape(n.styleDescription||'')}" placeholder="请输入款式说明"></label><label>针种<input id="needle-type" maxlength="100" value="${escape(n.needleType||'')}" placeholder="请输入针种"></label><label>季节<input id="season" maxlength="100" value="${escape(n.season||'')}" placeholder="请输入季节"></label><label>尺码<input id="size-code" maxlength="100" value="${escape(n.size||'')}" placeholder="例如 M 或 48码"></label><label>方案备注<textarea id="scheme-remark" maxlength="100" placeholder="请输入方案备注">${escape(n.schemeRemark||'')}</textarea></label></section>`;}
+function groupFields(n){const ways=normalizeColorways(n);return `<section class="advice-form-section group-fields"><header class="section-heading"><h2 class="scheme-section-title">颜色</h2><button class="section-add" data-action="colorway-add">新增颜色</button></header>${ways.map((c,i)=>`<article class="colorway-card colorway-entry"><button class="colorway-entry-hit" data-action="colorway-edit" data-id="${escape(c.id)}" aria-label="编辑颜色${i+1}"></button><header><h3>颜色${i+1}</h3><span class="color-position-count">${c.colors.length}个色位</span><span class="colorway-quantity">· ${colorQuantity(c)}件</span><i class="chevron"></i></header></article>`).join('')}${ways.length?`<button class="color-details-link" data-action="colorway-details">查看明细 <span>›</span></button>`:'<p class="color-empty">未填写</p>'}</section><section class="advice-form-section group-fields scheme-info"><h2 class="scheme-section-title">资料</h2><label>3D出图<select id="render-3d"><option value="否" ${n.render3D!=='是'?'selected':''}>否</option><option value="是" ${n.render3D==='是'?'selected':''}>是</option></select></label><label>款式说明<input id="style-description" maxlength="100" value="${escape(n.styleDescription||'')}" placeholder="请输入款式说明"></label><label>针种<input id="needle-type" maxlength="100" value="${escape(n.needleType||'')}" placeholder="请输入针种"></label><label>季节<input id="season" maxlength="100" value="${escape(n.season||'')}" placeholder="请输入季节"></label><label>尺码<input id="size-code" maxlength="100" value="${escape(n.size||'')}" placeholder="例如 M 或 48码"></label><label>方案备注<textarea id="scheme-remark" maxlength="100" placeholder="请输入方案备注">${escape(n.schemeRemark||'')}</textarea></label></section>`;}
 function openColorway(id){
  if(uploading){notify('照片处理中，请稍候');return;}
  rememberScheme();
@@ -263,8 +263,9 @@ function captureColorway(){
 function openColorPosition(index){
  captureColorway();colorPositionIndex=index;
  const current=colorwayDraft.colors[index].position;
+ const used=new Set(colorwayDraft.colors.filter((_,i)=>i!==index).map(c=>c.position));
  const letters=Array.from({length:Math.max(26,(colorwayDraft?.colors.length||0)+1)},(_,i)=>lettersAt(i));
- mountPopup(`<section class="color-position-panel" role="dialog" aria-modal="true" aria-labelledby="color-position-title"><h2 id="color-position-title">选择色位</h2><div class="color-position-grid">${letters.map(letter=>`<button data-action="color-position-pick" data-value="${letter}" class="${letter===current?'selected':''}" aria-pressed="${letter===current}">${letter}</button>`).join('')}</div><button class="color-position-cancel" data-action="popup-close">取消</button></section>`,'bottom');
+ mountPopup(`<section class="color-position-panel" role="dialog" aria-modal="true" aria-labelledby="color-position-title"><h2 id="color-position-title">选择色位</h2><div class="color-position-grid">${letters.map(letter=>`<button data-action="color-position-pick" data-value="${letter}" ${used.has(letter)?'disabled title="当前颜色已使用该色位"':''} class="${letter===current?'selected':''}" aria-pressed="${letter===current}">${letter}</button>`).join('')}</div><button class="color-position-cancel" data-action="popup-close">取消</button></section>`,'bottom');
  $('#advice-popup [aria-pressed="true"]')?.focus();
 }
 function saveColorway(){
@@ -282,6 +283,16 @@ function saveColorway(){
   }
  }
 
+ const positions=new Set();
+ for(const [i,color] of colorwayDraft.colors.entries()){
+  if(positions.has(color.position)){
+   const message=`色位 ${color.position} 已使用，同一颜色内色位不能重复`;
+   $('#colorway-error').textContent=message;
+   const field=document.querySelectorAll('#colorway-rows .color-position')[i];
+   field.setAttribute('aria-invalid','true');field.focus();field.scrollIntoView({block:'center',behavior:'smooth'});notify(message);return;
+  }
+  positions.add(color.position);
+ }
  const colors=schemeDrafts[groupEditorId].colorways;
  const index=colors.findIndex(c=>c.id===colorwayDraft.id);
  if(index<0)colors.push(structuredClone(colorwayDraft));else colors[index]=structuredClone(colorwayDraft);
@@ -300,7 +311,7 @@ function renderNote(){
  /* item editor intentionally keeps only item fields */
  const categoryBlock=$('.advice-category-options').parentElement;
  if(!adviceFields.category.expanded)categoryBlock.innerHTML=`<button class="tag-picker-entry" data-action="category-open"><span>修改类别</span><span class="tag-picker-value">${escape(n.category||'请选择')}</span><i class="chevron"></i></button>`;
- if(n.category&&(adviceFields.categories[n.category]?.expanded??(n.category==='工艺'))){
+ if(n.category&&(config.adviceCategories[n.category]||[]).length<=20){
  $('[data-action="tags-open"]').outerHTML=`<section class="advice-form-section"><h2>修改标签</h2><div class="advice-tag-options">${(config.adviceCategories[n.category]||[]).map(t=>`<button class="${n.tags.includes(t)?'selected':''}" data-action="tag-inline" data-value="${escape(t)}" aria-pressed="${n.tags.includes(t)}">${escape(t)}</button>`).join('')||'<p>暂无可选标签</p>'}</div></section>`;
  }
  const content=$('#advice-popup .advice-content')||$('#advice-page .advice-content');
@@ -446,12 +457,12 @@ document.addEventListener('click', e=>{
    if(uploading){notify('照片处理中，请稍候');break;}
    captureNote();
    let first=editing.modificationGroups.find(n=>(n.groupId||n.id)===groupEditorId);
-   const groupData={colorways:normalizeColorways(noteDraft),colors:[],styleDescription:noteDraft?.styleDescription||'',needleType:noteDraft?.needleType||'',season:noteDraft?.season||'',size:noteDraft?.size||'',schemeRemark:noteDraft?.schemeRemark||''};
+   const groupData={render3D:noteDraft?.render3D==='是'?'是':'否',colorways:normalizeColorways(noteDraft),colors:[],styleDescription:noteDraft?.styleDescription||'',needleType:noteDraft?.needleType||'',season:noteDraft?.season||'',size:noteDraft?.size||'',schemeRemark:noteDraft?.schemeRemark||''};
    if(first) Object.assign(first,groupData);
-   else if(noteDraft && (schemePhotoTarget().photos.length||groupData.colorways.length||groupData.styleDescription||groupData.needleType||groupData.season||groupData.size||groupData.schemeRemark)) {
+   else if(noteDraft && (schemePhotoTarget().photos.length||groupData.render3D==='是'||groupData.colorways.length||groupData.styleDescription||groupData.needleType||groupData.season||groupData.size||groupData.schemeRemark)) {
      editing.modificationGroups.push({id:crypto.randomUUID(),groupId:groupEditorId,category:'',tags:[],text:'',photos:[],...groupData});
    }
-   if(!editing.modificationGroups.filter(n=>(n.groupId||n.id)===groupEditorId).some(isModification)&&!groupData.colorways.length&&!['styleDescription','needleType','season','size','schemeRemark'].some(k=>groupData[k].trim())&&!schemePhotoTarget().photos.length)editing.modificationGroups=editing.modificationGroups.filter(n=>(n.groupId||n.id)!==groupEditorId);
+   if(!editing.modificationGroups.filter(n=>(n.groupId||n.id)===groupEditorId).some(isModification)&&groupData.render3D!=='是'&&!groupData.colorways.length&&!['styleDescription','needleType','season','size','schemeRemark'].some(k=>groupData[k].trim())&&!schemePhotoTarget().photos.length)editing.modificationGroups=editing.modificationGroups.filter(n=>(n.groupId||n.id)!==groupEditorId);
    delete schemeDrafts[groupEditorId];
    markSaved(true);
    returnToQuote();
@@ -476,6 +487,7 @@ document.addEventListener('click', e=>{
  case 'color-position-open':openColorPosition(Number(button.dataset.index));break;
  case 'color-position-pick':{
  const index=colorPositionIndex;
+ if(colorwayDraft.colors.some((c,i)=>i!==index&&c.position===button.dataset.value)){notify('同一颜色内色位不能重复');return;}
  colorwayDraft.colors[index].position=button.dataset.value;
  dismissPopup();
  const field=$(`[data-action="color-position-open"][data-index="${index}"]`);

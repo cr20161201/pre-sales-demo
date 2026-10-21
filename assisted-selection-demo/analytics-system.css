@@ -71,3 +71,22 @@ html{scrollbar-gutter:stable}.analysis-body{overflow-anchor:none}.stable-report>
 .filters #reset{flex-shrink:0;white-space:nowrap}
 .filters .style-popover{left:auto;right:0}
 @media(max-width:1100px){.filters{gap:8px}.filters #period{width:150px}.filters .style-filter{gap:4px}.filters .multi-picker summary,.filters #style-summary{padding-left:5px;padding-right:5px}}
+
+.source-table-controls{display:flex;align-items:center;gap:16px;flex-wrap:wrap;justify-content:flex-end}.source-export{flex-shrink:0;border:1px solid #d7e1ef;border-radius:4px;padding:7px 12px;color:#4776cc;background:#fff;font-size:12px;white-space:nowrap}.source-export:hover{background:#f3f7ff}.source-export:disabled{color:#aab2bf;border-color:#e6eaf0;cursor:not-allowed}.trend-legend{gap:10px}.trend-legend button{font-size:11px}
+/* Allow module controls to occupy their actual height at narrower desktop widths. */
+.stable-report .panel-head{height:auto;flex-shrink:0}
+
+/* Color rankings share one compact row, with up to ten real entries each. */
+.stable-report>.color-rankings{grid-template-columns:repeat(3,minmax(0,1fr));height:auto;grid-template-rows:none;align-items:stretch}
+.stable-report>.color-rankings>.panel{height:auto;min-height:480px;min-width:0;padding:16px}
+.stable-report .color-rankings .panel-head{flex-direction:column;align-items:flex-start;gap:12px;margin-bottom:18px;min-height:0}
+.stable-report .color-rankings .tab-switch{gap:4px;flex-wrap:wrap}
+.stable-report .color-rankings .tab-switch button{white-space:nowrap;padding:4px 6px}
+.stable-report .color-rankings .chart-body{justify-content:flex-start;gap:12px}
+.stable-report .color-rankings .bar-row{min-height:26px}
+.stable-report .color-rankings .bar-top{align-items:flex-start}
+.stable-report .color-rankings .bar-track{height:3px}
+@media(max-width:900px){.stable-report>.color-rankings{grid-template-columns:1fr}.stable-report>.color-rankings>.panel{min-height:0}}
+
+.color-control-group{display:flex;align-items:center;gap:8px;min-width:0}.color-control-label{font-size:11px;color:#888;white-space:nowrap}.color-control-group+.color-control-group{border-left:1px solid #e6e6e6;padding-left:18px}.color-table-controls{gap:18px}.color-table-controls .tab-switch{flex-wrap:wrap}
+@media(max-width:600px){.color-control-group+.color-control-group{border-left:0;padding-left:0}.color-table-controls{justify-content:flex-start;gap:10px}}
