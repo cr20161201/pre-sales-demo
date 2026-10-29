@@ -47,3 +47,7 @@
 - 界面证据：`docs/images/analysis-selection.png`、`analysis-modification.png`、`analysis-color.png`、`analysis-drill.png`。已检查1440/1280桌面与390手机色位选择；顶部筛选维持单行，排行控件不与图表重叠。
 
 回归命令（需本地 Playwright 和5188静态服务）：`node tests/sampling-analytics-check.cjs`。可用 `CHROME_PATH` 指定现有浏览器、`DEMO_URL` 指定服务地址；不需要为Demo安装生产依赖。旧分析测试描述历史指标和页面，仅作为历史记录，本轮以此专项验收为准。
+
+## 导出分析表格
+
+三个分析页表格标题区同时提供“导出源数据”和“导出分析表格”。后者导出当前表格的全部分页结果，保留当前筛选、列结构、聚合维度、统计对象、排序及合计行；款式保留名称和编号，图片与跳转按钮不导出，不含上方图表。无匹配数据时两个入口均禁用。

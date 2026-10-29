@@ -90,3 +90,23 @@ html{scrollbar-gutter:stable}.analysis-body{overflow-anchor:none}.stable-report>
 
 .color-control-group{display:flex;align-items:center;gap:8px;min-width:0}.color-control-label{font-size:11px;color:#888;white-space:nowrap}.color-control-group+.color-control-group{border-left:1px solid #e6e6e6;padding-left:18px}.color-table-controls{gap:18px}.color-table-controls .tab-switch{flex-wrap:wrap}
 @media(max-width:600px){.color-control-group+.color-control-group{border-left:0;padding-left:0}.color-table-controls{justify-content:flex-start;gap:10px}}
+
+.analysis-export-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+
+.note-tag-chart{max-height:260px;overflow-y:auto;padding-right:10px}.note-tag-chart .bar-top>span{white-space:normal;overflow-wrap:anywhere}
+
+/* Every Top10 chart grows with its content; scrolling belongs to the page. */
+.stable-report>.grid-main{height:auto;align-items:stretch}
+.stable-report>.grid-main>.panel{height:auto;min-height:320px}
+.stable-report .chart-body{overflow:visible;flex:none}
+.stable-report .chart-body:has(>.bar-row){justify-content:flex-start;gap:12px}
+.note-tag-chart{max-height:none;overflow:visible;padding-right:0}
+.note-tag-chart .bar-row:last-child{margin-bottom:0}
+
+.stable-report>.grid-main:has(>.note-analysis-panel){grid-template-columns:repeat(2,minmax(0,1fr))}
+.stable-report .note-analysis-panel .chart-body{flex:1;justify-content:center}
+.stable-report .note-analysis-panel .donut-layout{height:auto;min-height:280px;padding:20px 12px;gap:32px}
+.stable-report .note-analysis-panel .donut{width:220px;height:220px;flex-shrink:0}
+.stable-report .note-analysis-panel .donut-legend{flex:1;max-width:220px}
+@media(max-width:1100px){.stable-report .note-analysis-panel .donut-layout{gap:18px}.stable-report .note-analysis-panel .donut{width:180px;height:180px}}
+@media(max-width:800px){.stable-report>.grid-main:has(>.note-analysis-panel){grid-template-columns:1fr}.stable-report .note-analysis-panel .donut-layout{min-height:220px}.stable-report .note-analysis-panel .donut{width:160px;height:160px}}

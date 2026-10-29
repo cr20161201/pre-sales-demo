@@ -6,12 +6,16 @@ const products=[...window.DEMO_CONFIG.products,
  {id:'ST-DEMO-005',name:'休闲外套',category:'外套',image:'assets/styles/jacket-beige.svg'},
  {id:'ST-DEMO-006',name:'收腰连衣裙',category:'连衣裙',image:'assets/styles/dress-blue.svg'},
  {id:'ST-DEMO-007',name:'短袖连衣裙',category:'连衣裙',image:'assets/styles/dress-black.svg'}];
+// Additional illustrative styles reuse local reference artwork; no real product mapping implied.
+products.push(...['针织衫','半身裙','长裤','短裤','马甲','卫衣','风衣','大衣','夹克','运动上衣'].map((category,i)=>({id:`ST-ANALYSIS-${String(i+1).padStart(3,'0')}`,name:`${category}演示款`,category,image:'assets/styles/shirt-white.svg'})));
 const customers=[{name:'云织服饰',type:'品牌客户'},{name:'青禾设计工作室',type:'设计工作室'},{name:'锦序服饰',type:'品牌客户'},{name:'禾川贸易',type:'贸易客户'},{name:'原色设计工作室',type:'设计工作室'},{name:'远帆服装贸易',type:'贸易客户'}];
+customers.push(...['星澜服饰','沐禾设计','知序贸易','青岚服装'].map(name=>({name,type:'演示客户'})));
 const end=new Date('2026-09-15T12:00:00Z'),date=d=>new Date(end.getTime()-d*86400000).toISOString().slice(0,10);
 const events=SamplingData.createOrders(products,customers);
 const categories=['工艺','尺寸','面料','其他'],tags={工艺:['缝制','领口','袖口','辅料'],尺寸:['袖长','衣长','胸围','肩宽'],面料:['手感','克重','颜色','成分'],其他:['版型','细节']},texts={工艺:['调整缝制细节，保持表面平整。','领口增加一道加固工艺。','袖口保持原工艺，优化收边。','辅料颜色与主面料保持一致。'],尺寸:['袖长缩短 2cm，袖口保持原工艺。','衣长增加 1cm，保持原版型。','胸围增加 2cm，提升活动空间。','肩宽收窄 1cm。'],面料:['衣身面料手感更柔软，重新出样。','整件衣服减轻克重，保留现有版型。','衣身绿色降低饱和度，纽扣同步配色。','调整衬衫面料成分，保持现有款式。'],其他:['整体版型适当放松。','补充细节参考图。']};
 const presetNotes=SamplingData.createNotes(events,categories,tags,texts);
 const colorRecords=ColorAnalysis.createRecords(events);
+let noteAnalysisMode='category';
 let colorTableMode='pair',colorGroupings={material:'all',code:'all',pair:'all',table:'all'};
 let view=['notes','colors'].includes(location.hash.slice(1))?location.hash.slice(1):'products',rankMetric='first',grouping='pid',rankGrouping='pid',selectionNoteGrouping='pid',noteGrouping='customer',selectedNoteCategories=[],selectedNoteTags=[],selectedProducts=[],selectedCategories=[],selectedCustomers=[],noteScope=null,colorScope=null,analysisOrigin=null,tablePage=1;
 const sum=(rows,k)=>rows.reduce((n,r)=>n+r[k],0),period=()=>Number($('#period').value);
@@ -46,7 +50,7 @@ function donut(list){const total=list.reduce((n,r)=>n+r.value,0),colors=['#4c83e
 function dimensionControls(attr,current,labels=[['customer','按客户'],['category','按品类'],['pid','按款式']]){return `<div class="tab-switch" aria-label="统计维度">${labels.map(([id,name])=>`<button data-${attr}="${id}" class="${current===id?'active':''}" aria-pressed="${current===id}">${name}</button>`).join('')}</div>`;}
 function groupedLabel(key){return {customer:'客户',category:'品类',pid:'款式'}[key]||'维度';}
 function namedGroup(key,name){return key==='pid'?(products.find(p=>p.id===name)?.name||name):name;}
-function rankingPanel(title,rows,key,metric='first',unit='次',attr='rank-grouping',current=rankGrouping){const values=grouped(rows,key).sort((a,b)=>b[metric]-a[metric]).map(r=>({name:namedGroup(key,r.name),value:r[metric]}));return panel(title,'',bars(values,Math.max(...values.map(r=>r.value),1),unit),`<div class="ranking-controls">${dimensionControls('rank-metric',rankMetric,selectionMetrics)}${dimensionControls(attr,current)}</div>`);}
+function rankingPanel(title,rows,key,metric='first',unit='次',attr='rank-grouping',current=rankGrouping){const values=grouped(rows,key).sort((a,b)=>b[metric]-a[metric]).slice(0,10).map(r=>({name:namedGroup(key,r.name),value:r[metric]}));return panel(title,'',bars(values,Math.max(...values.map(r=>r.value),1),unit),`<div class="ranking-controls">${dimensionControls('rank-metric',rankMetric,selectionMetrics)}${dimensionControls(attr,current)}</div>`);}
 function dimensionPage(){
  const related=notes(),relatedFor=r=>related.filter(n=>n[grouping]===r.name);
  const availableColors=colorRecords.filter(r=>r.day<period()&&matching(r));
@@ -73,13 +77,21 @@ function selectionDonut(list){
  const arcs=list.map((r,i)=>{const share=r.value/total*100,arc=`<circle class="category-sector" cx="100" cy="100" r="76" pathLength="100" fill="none" stroke="${colors[i%4]}" stroke-width="30" stroke-dasharray="${share} ${100-share}" stroke-dashoffset="${-offset}" transform="rotate(-90 100 100)" data-note-category="${esc(r.name)}" role="button" tabindex="0" aria-label="${esc(r.name)} ${r.value}条 ${pct(r.value,total)}"><title>${esc(r.name)}：${r.value}条，${pct(r.value,total)}</title></circle>`;offset+=share;return arc;}).join('');
  return `<div class="selection-donut-layout"><div class="selection-donut"><svg viewBox="0 0 200 200" aria-label="修改类别分布"><circle cx="100" cy="100" r="76" fill="none" stroke="#edf1f7" stroke-width="30"/>${arcs}</svg><span class="selection-donut-total">${num(total)}<small>条</small></span></div><div class="selection-donut-legend">${list.map((r,i)=>`<button data-note-category="${esc(r.name)}"><i style="background:${colors[i%4]}"></i><span>${esc(r.name)}</span><span>${r.value}条</span><strong>${pct(r.value,total)}</strong></button>`).join('')||'<span class="empty">暂无修改内容</span>'}</div></div>`;
 }
-function selectionNotes(rows){const dist=noteDistribution(rows),groups=noteGroups(rows,selectionNoteGrouping).map(g=>({name:g.name,value:g.rows.length})).slice(0,5);return `<div class="grid-main">${panel('修改类别分布','',selectionDonut(dist.list))}${panel(`${groupedLabel(selectionNoteGrouping)}修改内容排行`,'',bars(groups,Math.max(...groups.map(r=>r.value),1),'条'),dimensionControls('selection-note-grouping',selectionNoteGrouping))}</div>`;}
+function selectionNotes(rows){const dist=noteDistribution(rows),groups=noteGroups(rows,selectionNoteGrouping).map(g=>({name:g.name,value:g.rows.length})).slice(0,10);return `<div class="grid-main">${panel('修改类别分布','',selectionDonut(dist.list))}${panel(`${groupedLabel(selectionNoteGrouping)}修改内容排行`,'',bars(groups,Math.max(...groups.map(r=>r.value),1),'条'),dimensionControls('selection-note-grouping',selectionNoteGrouping))}</div>`;}
 function noteMatch(n){return (!selectedNoteCategories.length||selectedNoteCategories.includes(n.categoryName))&&(!selectedNoteTags.length||n.tags.some(t=>selectedNoteTags.includes(t)));}
 function notesPage(){
- const rows=notes().filter(noteMatch),dist=noteDistribution(rows),label=groupedLabel(noteGrouping),groups=noteGroups(rows,noteGrouping);
+ const rows=notes().filter(noteMatch),dist=noteDistribution(rows),label=groupedLabel(noteGrouping),groups=noteGroups(rows,noteGrouping).slice(0,10);
  const controls=dimensionControls('note-grouping',noteGrouping);
- const tagMode=selectedNoteCategories.length===1,tagRows=tagDistribution(rows).slice(0,5);
- return `<div class="kpi-grid unified-kpis">${kpi('修改内容数量',num(rows.length),'条','')}${kpi('涉及客户数',new Set(rows.map(n=>n.customer)).size,'个','')}${kpi('涉及款式数',new Set(rows.map(n=>n.pid)).size,'款','')}</div><div class="aggregation-heading"><span>修改内容</span></div><div class="grid-main">${panel(tagMode?selectedNoteCategories[0]+' · 标签分布':'修改类别分布','',tagMode?bars(tagRows,Math.max(...tagRows.map(r=>r.value),1),'条'):donut(dist.list))}${panel(`${label}修改内容排行`,'',bars(groups.map(g=>({name:g.name,value:g.rows.length})),Math.max(...groups.map(g=>g.rows.length),1),'条'),controls)}</div>`+panel('修改内容汇总','',noteSummary(rows),exportButton(rows.length),'table-panel');
+ const counts=new Map();
+ for(const row of rows)for(const tag of new Set(row.tags.length?row.tags:['未填写标签'])){
+  const key=JSON.stringify([row.categoryName,tag]);
+  if(!counts.has(key))counts.set(key,{name:row.categoryName+' · '+tag,value:0});
+  counts.get(key).value++;
+ }
+ const allTags=[...counts.values()].sort((a,b)=>b.value-a.value),tagRows=allTags.slice(0,10);
+ const analysisControls=dimensionControls('note-analysis-mode',noteAnalysisMode,[['category','按类别'],['tag','按标签']]);
+ const tagChart=`<div class="note-tag-chart" aria-label="修改标签数量排行 Top10">${bars(tagRows,Math.max(...allTags.map(r=>r.value),1),'条')}</div>`;
+ return `<div class="kpi-grid unified-kpis">${kpi('修改内容数量',num(rows.length),'条','')}${kpi('涉及客户数',new Set(rows.map(n=>n.customer)).size,'个','')}${kpi('涉及款式数',new Set(rows.map(n=>n.pid)).size,'款','')}</div><div class="aggregation-heading"><span>修改内容</span></div><div class="grid-main">${panel('修改内容分析','',noteAnalysisMode==='tag'?tagChart:donut(dist.list),analysisControls,'note-analysis-panel')}${panel(`${label}修改内容排行`,'',bars(groups.map(g=>({name:g.name,value:g.rows.length})),Math.max(...groups.map(g=>g.rows.length),1),'条'),controls)}</div>`+panel('修改内容汇总','',noteSummary(rows),exportButton(rows.length),'table-panel');
 }
 function syncNoteFilters(){
  syncMulti('note-category',categories,selectedNoteCategories,'类别');
@@ -101,8 +113,21 @@ function colorPage(){
  return `<div class="kpi-grid unified-kpis color-kpis">${kpi('使用原料数',groups(['material']).length,'种','')}${kpi('使用颜色数',groups(['code']).length,'种','')}${kpi('使用纱线数',groups(['material','code']).length,'种','')}</div><p class="color-analysis-note">演示数据 · 按颜色对应件数统计；同一配色内重复的原料或颜色只计一次，原料与颜色排行之间不可相加。</p><div class="aggregation-heading"><span>颜色使用分析</span></div><div class="grid-main color-rankings">${ranking('原料使用排行',['material'],'material')}${ranking('颜色使用排行',['code'],'code')}${ranking('纱线使用排行',['material','code'],'pair')}</div>`+panel('颜色明细','',table,tableControls,'table-panel');
 }
 function sourcesPage(){return panel('数据来源','',`<div class="source-row"><div><h3>打样订单与关联订单</h3><p>${events.length} 条订单款式记录 · ${products.length} 款 · ${customers.length} 个客户</p></div><span class="badge">演示数据</span></div><div class="source-row"><div><h3>已提交方案修改与颜色</h3><p>${presetNotes.length} 条修改内容，${colorRecords.length} 条色位记录；均关联订单及方案</p></div><span class="badge">演示数据</span></div>`)+panel('统计口径','',`<div class="local-note">每条订单款式记录按关联订单层级归入一类：无关联订单为首次打样；有关联订单且上级无关联订单为二次打样；存在祖父订单为三次及以上打样。层级判断使用完整关联链，不受周期和顶部筛选截断。不再统计下单数；订单、关联订单和下单日期仍为源数据字段。修改内容按条计数，多标签不重复计入总量；标签占比可重叠。纱线为原料与颜色编码的配对，不另设纱线信息；使用件数按配色记录件数加权，同一配色内重复原料、颜色或纱线在各自维度去重，使用次数按配色记录数统计。三个分析页底部均可导出当前筛选范围内全部源数据，不受分页或聚合维度影响。当前使用预置已提交演示记录，未接入真实业务系统。</div>`);}
-function exportButton(count){return `<button class="source-export" data-export-source ${count?'':'disabled'}>导出源数据</button>`;}
-function exportSource(){const rows=view==='products'?SamplingData.selectionRows(data(),products):view==='notes'?SamplingData.modificationRows(notes().filter(noteMatch),products):SamplingData.colorRows(colorRecords.filter(r=>r.day<period()&&matching(r)));if(SourceExport.download(rows,views[view][0])){$('#analytics-toast').textContent='已导出当前筛选下的全部源数据';$('#analytics-toast').hidden=false;clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('#analytics-toast').hidden=true,2300);}}
+function exportButton(count){return `<div class="analysis-export-actions"><button class="source-export" data-export-source ${count?'':'disabled'}>导出源数据</button><button class="source-export" data-export-analysis ${count?'':'disabled'}>导出分析表格</button></div>`;}
+function exportFailure(){ $('#analytics-toast').textContent='导出失败，请重试';$('#analytics-toast').hidden=false;clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('#analytics-toast').hidden=true,2300); }
+async function exportAnalysis(){
+ // Pagination only hides rows: textContent retains every result in displayed order.
+ const table=$('#content > .table-panel table');
+ const rows=[...table.querySelectorAll('tr:not([data-empty])')].map(row=>[...row.cells].map(cell=>{
+  const product=cell.querySelector('.product-cell');
+  return product?[...product.querySelectorAll('strong,small')].map(e=>e.textContent.trim()).join('\n'):cell.textContent.trim();
+ }));
+ if(await SourceExport.download(rows,views[view][0],'分析表格')){
+  $('#analytics-toast').textContent='已导出当前表格的全部分析结果';$('#analytics-toast').hidden=false;
+  clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('#analytics-toast').hidden=true,2300);
+ }
+}
+async function exportSource(){const rows=view==='products'?SamplingData.selectionRows(data(),products,presetNotes,colorRecords):view==='notes'?SamplingData.modificationRows(notes().filter(noteMatch),products):SamplingData.colorRows(colorRecords.filter(r=>r.day<period()&&matching(r)),products);if(await SourceExport.download(rows,views[view][0])){$('#analytics-toast').textContent='已导出当前筛选下的全部源数据';$('#analytics-toast').hidden=false;clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('#analytics-toast').hidden=true,2300);}}
 function scopeMatches(row,scope){return !scope||((!scope.customers.length||scope.customers.includes(row.customer))&&(!scope.categories.length||scope.categories.includes(row.category))&&(!scope.products.length||scope.products.includes(row.pid)));}
 function scopeSummary(){
  const scope={customers:selectedCustomers,categories:selectedCategories,products:selectedProducts};const hasScope=scope.customers.length||scope.categories.length||scope.products.length;if(!hasScope&&!analysisOrigin)return '';
@@ -152,7 +177,9 @@ for(const kind of ['category','customer']){
  $('#'+kind+'-options').addEventListener('change',()=>{const selected=[...$('#'+kind+'-options').querySelectorAll('input:checked')].map(e=>e.value);if(kind==='category'){selectedCategories=selected;syncCategories();syncProductPicker();}else{selectedCustomers=selected;syncCustomers();}tablePage=1;render();});
 }
 document.addEventListener('click',e=>{const b=e.target.closest('button,[data-note-category]');if(!b)return;
- if(b.hasAttribute('data-export-source')){exportSource();return;}
+ if(b.dataset.noteAnalysisMode){noteAnalysisMode=b.dataset.noteAnalysisMode;render();return;}
+ if(b.hasAttribute('data-export-analysis')){exportAnalysis().catch(exportFailure);return;}
+ if(b.hasAttribute('data-export-source')){exportSource().catch(exportFailure);return;}
  if(b.dataset.analysisTarget){openAnalysis(b.dataset.analysisTarget,b.dataset.dimension,b.dataset.value);return;}
  if(b.id==='return-selection'){returnSelection();return;}
  if(b.id==='clear-analysis-scope'){selectedCategories=[];selectedProducts=[];selectedCustomers=[];syncCategories();syncCustomers();syncProductPicker();tablePage=1;render();return;}

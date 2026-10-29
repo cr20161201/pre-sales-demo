@@ -24,13 +24,20 @@ function modificationText(notes){
  const categories=[...new Set(['工艺','面料','其他',...notes.map(n=>n.categoryName)])];
  return categories.map(category=>{const rows=notes.filter(n=>n.categoryName===category&&n.text.trim());return rows.length?`${category}说明：\n`+rows.map((n,i)=>`${i+1}、${n.tags.length?n.tags.join('、')+'：':''}${n.text}`).join('\n'):'';}).filter(Boolean).join('\n\n');
 }
-function selectionRows(orders,products){return [['订单','关联订单','客户','款式','品类','下单日期'],...orders.map(o=>[o.orderId,o.parentId,o.customer,products.find(p=>p.id===o.pid)?.name||o.pid,o.category,o.date])];}
-function modificationRows(notes,products){
- const groups=new Map();for(const n of notes){const key=JSON.stringify([n.orderId,n.pid]);if(!groups.has(key))groups.set(key,{order:n,notes:[]});groups.get(key).notes.push(n);}
- const max=Math.max(0,...notes.map(n=>n.schemeIndex));
- const names=['一','二','三','四','五','六','七','八','九','十'];
- return [['订单','客户','款式',...Array.from({length:max},(_,i)=>'方案'+(names[i]||String(i+1)))],...[...groups.values()].map(({order:o,notes:list})=>[o.orderId,o.customer,products.find(p=>p.id===o.pid)?.name||o.pid,...Array.from({length:max},(_,i)=>modificationText(list.filter(n=>n.schemeIndex===i+1)))])];
-}
-function colorRows(rows){return [['订单','方案','原料','颜色'],...rows.map(r=>[r.orderId,'方案'+(['一','二','三','四'][r.schemeIndex-1]||r.schemeIndex),r.material,r.code])];}
+const productInfo=(row,products)=>products.find(p=>p.id===row.pid)||{};
+const picture=p=>p.image?{image:p.image}:'';
+function selectionRows(orders,products,notes=[],colors=[]){return [['序号','产品图','名称','品类','修改方案','客户','订单','关联订单','下单日期'],...orders.map((o,i)=>{
+ const p=productInfo(o,products),list=notes.filter(n=>n.orderId===o.orderId&&n.pid===o.pid),ways=colors.filter(c=>c.orderId===o.orderId&&c.pid===o.pid);
+ const schemes=Array.from({length:o.schemeCount||1},(_,j)=>{
+  const modifications=modificationText(list.filter(n=>n.schemeIndex===j+1));
+  const records=ways.filter(c=>c.schemeIndex===j+1),byWay=new Map();
+  for(const c of records){if(!byWay.has(c.wayId))byWay.set(c.wayId,[]);byWay.get(c.wayId).push(c);}
+  const colorText=[...byWay.values()].map((rows,k)=>`颜色${k+1}（${rows[0].quantity}件）：`+rows.map(c=>`${c.position} ${c.material} / ${c.code}`).join('；')).join('\n');
+  return `方案${j+1}\n${modifications||'修改内容：未填写'}${colorText?'\n'+colorText:''}`;
+ }).join('\n\n');
+ return [i+1,picture(p),p.name||o.pid,o.category,schemes,o.customer,o.orderId,o.parentId,o.date];
+})];}
+function modificationRows(notes,products){return [['序号','修改类别','修改标签','修改内容','产品图','名称','品类','客户','订单','关联订单','下单日期'],...notes.map((n,i)=>{const p=productInfo(n,products);return [i+1,n.categoryName,[...new Set(n.tags)].join('、'),n.text,picture(p),p.name||n.pid,n.category,n.customer,n.orderId,n.parentId,n.date];})];}
+function colorRows(rows,products=[]){return [['序号','原料','颜色编码','色位','产品图','名称','品类','客户','订单','关联订单','下单日期'],...rows.map((r,i)=>{const p=productInfo(r,products);return [i+1,r.material,r.code,r.position,picture(p),p.name||r.pid,r.category,r.customer,r.orderId,r.parentId,r.date];})];}
 window.SamplingData={classify,createOrders,createNotes,modificationText,selectionRows,modificationRows,colorRows};
 })();
